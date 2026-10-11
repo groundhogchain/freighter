@@ -5,11 +5,13 @@ import {
   ed25519PublicKey,
 } from "@groundhogchain/protocol";
 import type { WalletAccount } from "@groundhogchain/client/provider";
+import type { Account } from "@shared/api/types";
 
 /** One signer can control distinct addresses on Stellar and Thruput. */
 export interface ThruputAccount extends WalletAccount {
   stellarPublicKey: string;
   name: string;
+  importSource?: Account["importSource"];
 }
 
 /** Provider objects use exact schemas; wallet-only metadata stays internal. */

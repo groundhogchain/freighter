@@ -28,9 +28,15 @@ Transaction outcomes remain associated with their original network and account.
 
 The prototype uses `m/44'/1'/index'`; Freighter uses Stellar derivation. Restoring
 a prototype phrase through the ordinary Stellar recovery flow therefore does
-not recover the prototype's keys. Explicit prototype recovery/import must retain
-its derivation version, and imported keys need their own backup. Do not advertise
-prototype phrase compatibility until that path has acceptance-test evidence.
+not recover the prototype's keys. Use **Import a Thruput prototype account** on
+the Thruput screen after creating or unlocking the main wallet. It supports the
+prototype phrase plus an explicit zero-based index, or an imported 32-byte seed.
+The import records its source/path in encrypted key metadata, reauthenticates
+with the wallet password, and preserves the main wallet's recovery phrase.
+
+Keep the prototype's original phrase or imported-key backup: the main wallet's
+phrase does not recover these imported accounts. A golden vector from the
+prototype and the real-browser import/backup-preservation check cover this path.
 
 A new fork installation cannot read official Freighter's browser storage. A
 release must explain its supported restore/import path. Never copy or mutate
@@ -108,3 +114,10 @@ Remove that adapter when a qualified published client provides the field.
 RPC wire 11.2 alone is not evidence that the underlying runtime has the matching
 implementation. Managed hog-devnode 0.1.31-rc.2 rejected the valid wallet claim in
 the qualification run; the basic signing/submission smoke passed independently.
+
+Authorized simulation subsequently passed with an isolated source build of
+`hogd` tag `v0.1.31-rc.2` (`fb65d5333`) plus the implementation change from merged
+commit `4f503858c` (PR #4411), served by the source-built Thruput CLI 0.27.0. This
+keeps protocol `hogp/be08ba7ce49ccb8` matched without overriding the handshake.
+The fixture is a local qualification build, not a published runtime release.
+Pass its absolute path through `THRUPUT_DEVNODE_BINARY` when repeating that test.

@@ -140,6 +140,51 @@ try {
   const state = await callWallet("state");
   const account = state.accounts[0];
   assert.ok(account.address);
+  const backup = () =>
+    wallet.evaluate(async () => {
+      const response = await chrome.runtime.sendMessage({
+        type: "SHOW_BACKUP_PHRASE",
+        activePublicKey: null,
+        password: "disposable-fixture-password",
+      });
+      if (response.error) throw new Error("Fixture backup failed");
+      return response.mnemonicPhrase;
+    });
+  const originalBackup = await backup();
+  await wallet
+    .getByText("Import a Thruput prototype account", { exact: true })
+    .click();
+  await wallet
+    .getByLabel("Prototype recovery phrase", { exact: true })
+    .fill(
+      "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+    );
+  await wallet
+    .getByLabel("Wallet password", { exact: true })
+    .fill("disposable-fixture-password");
+  await wallet
+    .getByRole("button", { name: "Import account", exact: true })
+    .click();
+  await wallet
+    .getByText("Account imported. Select it from the account list.", {
+      exact: true,
+    })
+    .waitFor();
+  const imported = (await callWallet("state")).accounts.find(
+    (item) =>
+      item.address ===
+      "0x78f75ea743648e5cba16f3d49314d7b17a7e96fa80d49811218713df036c63d6",
+  );
+  assert.ok(imported, "prototype import recovers the original address");
+  assert.equal(imported.importSource.derivationPath, "m/44'/1'/0'");
+  assert.equal(
+    originalBackup === (await backup()),
+    true,
+    "prototype import preserves the primary backup",
+  );
+  await wallet
+    .getByText("Import a Thruput prototype account", { exact: true })
+    .click();
   await callWallet("airdrop", { account: account.address });
   assert.ok(
     (await client.getBalance(addressFromHex(account.address))).rawBalance > 0n,
@@ -327,7 +372,7 @@ try {
   await invoke({ method: "disconnect" });
   assert.equal((await invoke({ method: "getSession" })).accounts.length, 0);
   console.log(
-    "PASS: isolated Chrome/localnet account, funding, provider, signature verification, submission, receipt, single-use approval, popup recovery and disconnect",
+    `PASS: isolated Chrome/localnet account, prototype recovery, funding, provider, signature verification, submission, receipt, single-use approval, popup recovery and disconnect${process.env.REQUIRE_THRUPUT_SIMULATION === "1" ? ", authorized simulation" : ""}`,
   );
 } finally {
   await context?.close();

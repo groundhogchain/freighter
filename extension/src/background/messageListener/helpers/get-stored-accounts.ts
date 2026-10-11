@@ -51,6 +51,9 @@ export const getStoredAccounts = async (
         name: accountNameList[keyId] || `Account ${keyIdList.length}`,
         imported,
         hardwareWalletType,
+        ...(keyStore?.extra?.importSource
+          ? { importSource: keyStore.extra.importSource }
+          : {}),
       });
     }
   }

@@ -188,6 +188,15 @@ export const Dashboard = ({
             <dd className="Thruput__address">{account.stellarPublicKey}</dd>
             <dt>{t("Network identity")}</dt>
             <dd className="Thruput__address">{state.networkHash}</dd>
+            {account.importSource ? (
+              <>
+                <dt>{t("Imported account")}</dt>
+                <dd>
+                  {account.importSource.derivationPath ||
+                    t("Raw private-key seed")}
+                </dd>
+              </>
+            ) : null}
           </dl>
           <Button
             type="button"

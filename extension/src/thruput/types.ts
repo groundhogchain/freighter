@@ -47,6 +47,7 @@ export interface ThruputPendingReview {
 }
 
 export enum ThruputUiAction {
+  IMPORT = "import",
   STATE = "state",
   NETWORK = "network",
   PORTFOLIO = "portfolio",

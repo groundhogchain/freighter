@@ -4,6 +4,7 @@ import { KeyManager } from "@stellar/typescript-wallet-sdk-km";
 import { captureException } from "@sentry/browser";
 
 import { ImportAccountMessage } from "@shared/api/types/message-request";
+import type { Account } from "@shared/api/types";
 import { DataStorageAccess } from "background/helpers/dataStorageAccess";
 import {
   getEncryptedTemporaryData,
@@ -27,12 +28,14 @@ export const importAccount = async ({
   localStore,
   keyManager,
   sessionTimer,
+  importSource,
 }: {
   request: ImportAccountMessage;
   sessionStore: Store;
   localStore: DataStorageAccess;
   keyManager: KeyManager;
   sessionTimer: SessionTimer;
+  importSource?: Account["importSource"];
 }) => {
   const { password, privateKey } = request;
   let sourceKeys;
@@ -97,6 +100,7 @@ export const importAccount = async ({
       keyPair,
       mnemonicPhrase,
       imported: true,
+      importSource,
       sessionStore,
       localStore,
       keyManager,

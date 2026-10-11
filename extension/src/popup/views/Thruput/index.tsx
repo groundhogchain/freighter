@@ -7,6 +7,7 @@ import { navigateTo } from "popup/helpers/navigate";
 import { useThruputState } from "./useThruputState";
 import { Approval } from "./Approval";
 import { Dashboard } from "./Dashboard";
+import { ImportAccount } from "./ImportAccount";
 import "./styles.scss";
 
 export const Thruput = () => {
@@ -65,6 +66,7 @@ export const Thruput = () => {
               account={account}
               refresh={refresh}
             />
+            <ImportAccount refresh={refresh} />
           </>
         ) : (
           <div className="Thruput">

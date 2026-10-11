@@ -42,6 +42,7 @@ import {
   type ThruputState,
 } from "thruput/types";
 import { getThruputVault, signThruputTransaction } from "./vault";
+import { importThruputAccount } from "./importAccount";
 import { connectThruput, simulateThruput } from "./network";
 import { THRUPUT_STORAGE_KEY, ThruputStore } from "./storage";
 import {
@@ -610,6 +611,28 @@ const ui = async (
   }
   if (!value.vault.sessionKey)
     throw new WalletProviderError(4100, "Unlock the wallet first");
+  if (message.action === ThruputUiAction.IMPORT) {
+    const password = requestText(message.password);
+    const input =
+      message.kind === "thruput-prototype-v1"
+        ? {
+            kind: "thruput-prototype-v1" as const,
+            mnemonic: requestText(message.mnemonic, 4096),
+            index: Number(message.index),
+          }
+        : message.kind === "thruput-seed-v1"
+          ? {
+              kind: "thruput-seed-v1" as const,
+              seed: requestText(message.seed, 66),
+            }
+          : undefined;
+    if (!input)
+      throw new WalletProviderError(-32602, "Unsupported import format");
+    const result = await importThruputAccount(input, password);
+    invalidate();
+    await publish();
+    return result;
+  }
   if (message.action === ThruputUiAction.REVOKE) {
     await revoke(requestText(message.origin));
     return null;

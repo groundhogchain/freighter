@@ -38,7 +38,12 @@ export const getThruputVault = async () => {
   const accounts = sessionKey
     ? allAccountsSelector(state)
         .filter((account) => !account.hardwareWalletType)
-        .map((account) => thruputAccount(account.publicKey, account.name))
+        .map((account) => ({
+          ...thruputAccount(account.publicKey, account.name),
+          ...(account.importSource
+            ? { importSource: account.importSource }
+            : {}),
+        }))
     : [];
   // This session marker stays in the background. Never include it in messages.
   return {

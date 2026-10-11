@@ -189,6 +189,10 @@ export interface Account {
   name: string;
   imported: boolean;
   hardwareWalletType?: WalletType;
+  importSource?: {
+    kind: "thruput-prototype-v1" | "thruput-seed-v1";
+    derivationPath?: string;
+  };
 }
 
 export enum AccountType {

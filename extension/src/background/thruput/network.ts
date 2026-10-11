@@ -2,8 +2,17 @@ import {
   createGroundhogClient,
   HttpTransport,
   toHex0x,
+  type Transaction,
 } from "@groundhogchain/client";
-import { WalletProviderError } from "@groundhogchain/client/provider";
+import {
+  WalletProviderError,
+  type WalletAccount,
+} from "@groundhogchain/client/provider";
+import type {
+  Transport,
+  TransportRequestOptions,
+} from "@groundhogchain/client/transport";
+import semver from "semver";
 import {
   THRUPUT_NETWORKS,
   type ThruputNetworkSelection,
@@ -21,4 +30,59 @@ export const connectThruput = async (selection: ThruputNetworkSelection) => {
     throw new WalletProviderError(4901, "Thruput network identity changed");
   }
   return client;
+};
+
+/** Published client 0.17 predates the optional view claim on RPC wire 11.2. */
+export const simulateThruput = async (
+  selection: ThruputNetworkSelection,
+  transaction: Transaction,
+  account: WalletAccount,
+) => {
+  const verified = await connectThruput(selection);
+  const version = await verified.getVersion();
+  if (
+    !semver.valid(version.wireFormat) ||
+    !semver.gte(version.wireFormat, "11.2.0")
+  ) {
+    throw new WalletProviderError(
+      4200,
+      "This endpoint does not support authorized invocation simulation",
+    );
+  }
+  const http = new HttpTransport(THRUPUT_NETWORKS[selection.network].rpcUrl, {
+    timeoutMs: 15000,
+  });
+  // Keep the SDK's response decoding and gas serialization. Add only the public,
+  // pubkey-account claim this wallet supports; never supply keys or signatures.
+  const transport: Transport = {
+    request<T>(
+      method: string,
+      params?: unknown[],
+      options?: TransportRequestOptions,
+    ): Promise<T> {
+      return http.request<T>(
+        method,
+        method === "groundhog_view"
+          ? [
+              {
+                ...(params?.[0] as object),
+                authClaim: {
+                  kind: "pubkeySignature",
+                  publicKey: account.publicKey,
+                  nonce: account.nonce,
+                },
+              },
+            ]
+          : params,
+        options,
+      );
+    },
+  };
+  const client = await createGroundhogClient({ transport });
+  return client.view({
+    contract: transaction.invocation.invoked_address,
+    entrypoint: transaction.invocation.entrypoint,
+    calldata: transaction.invocation.calldata,
+    gasLimit: transaction.invocation.gas_limit,
+  });
 };

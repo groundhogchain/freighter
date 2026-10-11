@@ -62,6 +62,7 @@ import { LeaveFeedback } from "popup/views/LeaveFeedback";
 import { AccountMigration } from "popup/views/AccountMigration";
 import { AddFunds } from "popup/views/AddFunds";
 import { Wallets } from "popup/views/Wallets";
+import { Thruput } from "popup/views/Thruput";
 import { ConfirmSidebarRequest } from "popup/views/ConfirmSidebarRequest";
 
 import { DEV_SERVER } from "@shared/constants/services";
@@ -179,6 +180,7 @@ export const Router = () => (
     {isSidebarMode() && <SidebarSigningListener />}
     <Routes>
       <Route path="/" element={<Layout />}>
+        <Route path={ROUTES.thruput} element={<Thruput />} />
         <Route
           index
           element={
@@ -295,10 +297,7 @@ export const Router = () => (
           path={ROUTES.advancedSettings}
           element={<AdvancedSettings />}
         ></Route>
-        <Route
-          path={ROUTES.autoLockTimer}
-          element={<AutoLockTimer />}
-        ></Route>
+        <Route path={ROUTES.autoLockTimer} element={<AutoLockTimer />}></Route>
         <Route path={ROUTES.addFunds} element={<AddFunds />} />
         <Route path={ROUTES.wallets} element={<Wallets />} />
 

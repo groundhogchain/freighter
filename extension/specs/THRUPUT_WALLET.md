@@ -74,3 +74,37 @@ transfer feed; tracked-token events are required for that coverage.
 
 Production bridging, hardware signing, source-address provider accounts, prices,
 and full swap/NFT parity are separate work. Publishing requires owner approval.
+
+## Running the browser acceptance check
+
+After building the extension, use a compatible CLI's absolute path:
+
+```sh
+THRUPUT_CLI=/absolute/path/to/thruput node scripts/test-thruput-extension.mjs
+```
+
+The harness owns an ephemeral local node, isolated CLI configuration, and fresh
+Chromium profile. Port 9545 must be unused. It creates a disposable software
+account, requests local test HOG, connects a page through the real provider,
+approves and verifies a signature, submits, checks a committed receipt, rejects
+repeat submission, and verifies recovery after reopening the wallet. It also
+checks narrow/wide layout overflow and Portuguese rendering. No existing browser
+profile or wallet is accessed. Set `CHROMIUM_PATH` to override `/usr/bin/chromium`.
+
+Set `WALLET_SCREENSHOT_DIR` to capture the public account screen. The harness
+does not capture seed phrases or populated password fields.
+
+Invocation simulation qualification is a separate assertion:
+
+```sh
+REQUIRE_THRUPUT_SIMULATION=1 THRUPUT_CLI=/absolute/path/to/thruput \
+  node scripts/test-thruput-extension.mjs
+```
+
+This requires an RPC and runtime that both preserve simulated authorization.
+The published client 0.17.0 predates that optional request field; the wallet's
+transport adapter adds the public pubkey claim while retaining SDK view decoding.
+Remove that adapter when a qualified published client provides the field.
+RPC wire 11.2 alone is not evidence that the underlying runtime has the matching
+implementation. Managed hog-devnode 0.1.31-rc.2 rejected the valid wallet claim in
+the qualification run; the basic signing/submission smoke passed independently.

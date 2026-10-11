@@ -125,6 +125,13 @@ export const AccountHeader = ({
                   }
                 >
                   <>
+                    <button
+                      type="button"
+                      className="AccountHeader__options__item"
+                      onClick={() => navigateTo(ROUTES.thruput, navigate)}
+                    >
+                      {t("Open Thruput wallet")}
+                    </button>
                     <div className="AccountHeader__options__item">
                       <CopyText textToCopy={publicKey} doneLabel={t("Copied!")}>
                         <Text as="div" size="sm" weight="medium">

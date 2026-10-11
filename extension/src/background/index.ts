@@ -53,6 +53,7 @@ import {
   ScryptEncrypter,
 } from "@stellar/typescript-wallet-sdk-km";
 import { BrowserStorageConfigParams } from "@stellar/typescript-wallet-sdk-km/lib/Plugins/BrowserStorageFacade";
+import { handleThruputMessage } from "./thruput/service";
 
 const sessionTimer = new SessionTimer(dataStorageAccess(browserLocalStorage));
 
@@ -147,6 +148,16 @@ export const initSidebarConnectionListener = () => {
 export const initExtensionMessageListener = () => {
   browser?.runtime?.onMessage?.addListener(
     async (request: unknown, sender: browser.Runtime.MessageSender) => {
+      if (
+        request &&
+        typeof request === "object" &&
+        "type" in request &&
+        (request.type === SERVICE_TYPES.THRUPUT_UI ||
+          request.type === EXTERNAL_SERVICE_TYPES.THRUPUT_PROVIDER ||
+          request.type === EXTERNAL_SERVICE_TYPES.THRUPUT_CANCEL)
+      ) {
+        return handleThruputMessage(request, sender);
+      }
       const sessionStore = await buildStore();
       const localStore = dataStorageAccess(browserLocalStorage);
       const localKeyStore = new BrowserStorageKeyStore();

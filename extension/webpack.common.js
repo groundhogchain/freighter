@@ -27,6 +27,7 @@ const commonConfig = (
     background: path.resolve(__dirname, "./public/background.ts"),
     index: ["babel-polyfill", path.resolve(__dirname, "./src/popup/index.tsx")],
     contentScript: [path.resolve(__dirname, "./public/contentScript.ts")],
+    thruputInpage: [path.resolve(__dirname, "./public/thruputInpage.ts")],
   },
   watchOptions: {
     ignored: ["node_modules/**/*", "build/**/*"],

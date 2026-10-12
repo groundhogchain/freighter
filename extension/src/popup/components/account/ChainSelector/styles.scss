@@ -1,0 +1,25 @@
+.ChainSelector {
+  display: inline-grid;
+  grid-template-columns: minmax(0, 1fr) 1.5rem;
+  align-items: center;
+  select {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    appearance: none;
+    padding: 0.375rem 1.75rem 0.375rem 0.75rem;
+    border: 1px solid var(--sds-clr-gray-06);
+    border-radius: 2rem;
+    background: var(--sds-clr-gray-01);
+    color: var(--sds-clr-gray-12);
+    font: inherit;
+    font-size: 0.875rem;
+    cursor: pointer;
+  }
+  svg {
+    grid-column: 2;
+    grid-row: 1;
+    width: 0.875rem;
+    height: 0.875rem;
+    pointer-events: none;
+  }
+}

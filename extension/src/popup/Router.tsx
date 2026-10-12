@@ -22,8 +22,8 @@ import { navigate } from "popup/ducks/views";
 
 import { AppError } from "popup/components/AppError";
 
+import { Home } from "popup/views/Home";
 import { ActiveTabProvider } from "popup/views/Account/contexts/activeTabContext";
-import { Account } from "popup/views/Account";
 import { AccountHistory } from "popup/views/AccountHistory";
 import { AccountCreator } from "popup/views/AccountCreator";
 import { AddAccount } from "popup/views/AddAccount/AddAccount";
@@ -62,6 +62,7 @@ import { LeaveFeedback } from "popup/views/LeaveFeedback";
 import { AccountMigration } from "popup/views/AccountMigration";
 import { AddFunds } from "popup/views/AddFunds";
 import { Wallets } from "popup/views/Wallets";
+import { Thruput } from "popup/views/Thruput";
 import { ConfirmSidebarRequest } from "popup/views/ConfirmSidebarRequest";
 
 import { DEV_SERVER } from "@shared/constants/services";
@@ -165,7 +166,9 @@ const Layout = () => {
   return (
     <View
       isAppLayout={isAppLayout}
-      isScrollableView={location.pathname === "/"}
+      isScrollableView={
+        location.pathname === "/" || location.pathname === ROUTES.thruput
+      }
     >
       <Outlet />
     </View>
@@ -179,14 +182,8 @@ export const Router = () => (
     {isSidebarMode() && <SidebarSigningListener />}
     <Routes>
       <Route path="/" element={<Layout />}>
-        <Route
-          index
-          element={
-            <ActiveTabProvider>
-              <Account />
-            </ActiveTabProvider>
-          }
-        ></Route>
+        <Route path={ROUTES.thruput} element={<Thruput />} />
+        <Route index element={<Home />}></Route>
         <Route
           path={ROUTES.accountHistory}
           element={<AccountHistory />}
@@ -295,10 +292,7 @@ export const Router = () => (
           path={ROUTES.advancedSettings}
           element={<AdvancedSettings />}
         ></Route>
-        <Route
-          path={ROUTES.autoLockTimer}
-          element={<AutoLockTimer />}
-        ></Route>
+        <Route path={ROUTES.autoLockTimer} element={<AutoLockTimer />}></Route>
         <Route path={ROUTES.addFunds} element={<AddFunds />} />
         <Route path={ROUTES.wallets} element={<Wallets />} />
 

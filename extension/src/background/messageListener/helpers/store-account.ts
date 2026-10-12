@@ -19,6 +19,7 @@ import {
   TEMPORARY_STORE_EXTRA_ID,
 } from "constants/localStorageTypes";
 import { addAccountName, getKeyIdList } from "background/helpers/account";
+import type { Account } from "@shared/api/types";
 
 interface KeyPair {
   publicKey: string;
@@ -31,6 +32,7 @@ export const storeAccount = async ({
   password,
   keyPair,
   imported = false,
+  importSource,
   isSettingHashKey = false,
   sessionStore,
   keyManager,
@@ -40,6 +42,7 @@ export const storeAccount = async ({
   password: string;
   keyPair: KeyPair;
   imported?: boolean;
+  importSource?: Account["importSource"];
   isSettingHashKey?: boolean;
   sessionStore: Store;
   keyManager: KeyManager;
@@ -70,6 +73,7 @@ export const storeAccount = async ({
           publicKey,
           name: accountName,
           imported,
+          ...(importSource ? { importSource } : {}),
         },
       ],
       localStore,
@@ -78,7 +82,11 @@ export const storeAccount = async ({
 
   const keyMetadata = {
     key: {
-      extra: { imported, mnemonicPhrase },
+      extra: {
+        imported,
+        mnemonicPhrase,
+        ...(importSource ? { importSource } : {}),
+      },
       type: KeyType.plaintextKey,
       publicKey,
       privateKey,

@@ -3632,6 +3632,47 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@groundhogchain/client@npm:0.17.0":
+  version: 0.17.0
+  resolution: "@groundhogchain/client@npm:0.17.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40groundhogchain%2Fclient%2F0.17.0%2Fc87b77409d467f2bee1c6161a052e347d6dca447"
+  dependencies:
+    "@groundhogchain/contract-spec": "npm:0.13.0"
+    "@groundhogchain/protocol": "npm:0.13.0"
+    "@groundhogchain/xdr": "npm:0.13.0"
+    "@noble/ed25519": "npm:^3.1.0"
+    "@noble/hashes": "npm:^2.2.0"
+    smol-toml: "npm:1.8.0"
+  checksum: 10c0/34f53074e9b9bbe4291b8be48ac1af18a85ae429757d06b1073bc979d68379642fe28094eac4d432657527d080de548db8c7ad53425afdd3f1dcae0dd6713b73
+  languageName: node
+  linkType: hard
+
+"@groundhogchain/contract-spec@npm:0.13.0":
+  version: 0.13.0
+  resolution: "@groundhogchain/contract-spec@npm:0.13.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40groundhogchain%2Fcontract-spec%2F0.13.0%2F336b205f514844c78aef18395712a59fdd958a7a"
+  dependencies:
+    "@groundhogchain/protocol": "npm:0.13.0"
+    "@groundhogchain/xdr": "npm:0.13.0"
+  checksum: 10c0/d3fd30af06e30d39766085b6bcd637f02b078943ce0f2416542d8dbcbf85b3eb663fc3e5cb37e01338cefc420052fc98ed19c9c7bee91d2c70ca906fcc34f66f
+  languageName: node
+  linkType: hard
+
+"@groundhogchain/protocol@npm:0.13.0":
+  version: 0.13.0
+  resolution: "@groundhogchain/protocol@npm:0.13.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40groundhogchain%2Fprotocol%2F0.13.0%2F281be8f89928e593e3c05b287dcb6c31d0455741"
+  dependencies:
+    "@groundhogchain/xdr": "npm:0.13.0"
+    "@noble/hashes": "npm:2.2.0"
+  checksum: 10c0/cb92b7f1a310247cc073a6cb7e45f5ce62e9c4bff8962a0a679f1db2fc23aa76fa3e47019bdcd366bb2ceb31c897514ac2d81d970cded61fda4ff3ab2fdee01e
+  languageName: node
+  linkType: hard
+
+"@groundhogchain/xdr@npm:0.13.0":
+  version: 0.13.0
+  resolution: "@groundhogchain/xdr@npm:0.13.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40groundhogchain%2Fxdr%2F0.13.0%2F0fd06b74872234b3aec13b813ab66d9fc9808751"
+  checksum: 10c0/fd2d1471bd92820c9b9f67422a37c7fff0282693a8fee162e98ccf59f762e28c3710482c353426cc8719c79011a15a5a609099e84b522df2350e730a340a7adf
+  languageName: node
+  linkType: hard
+
 "@gulpjs/to-absolute-glob@npm:^4.0.0":
   version: 4.0.0
   resolution: "@gulpjs/to-absolute-glob@npm:4.0.0"
@@ -4577,7 +4618,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@noble/hashes@npm:^2.2.0":
+"@noble/hashes@npm:2.2.0, @noble/hashes@npm:^2.2.0":
   version: 2.2.0
   resolution: "@noble/hashes@npm:2.2.0"
   checksum: 10c0/cad8630c504d6b9271984f685cd0af9101b40988fc2dfbe17ccdf068a9941f95cc5c9957d89e9ca4b7ca94c15cb35f93510c5d53a09fbcc83ee503b93d0a1034
@@ -12292,6 +12333,8 @@ __metadata:
   dependencies:
     "@amplitude/analytics-browser": "npm:2.44.4"
     "@amplitude/experiment-js-client": "npm:1.21.2"
+    "@groundhogchain/client": "npm:0.17.0"
+    "@groundhogchain/protocol": "npm:0.13.0"
     "@lavamoat/allow-scripts": "npm:5.1.0"
     "@ledgerhq/hw-app-str": "npm:7.7.4"
     "@ledgerhq/hw-transport-webhid": "npm:6.35.4"
@@ -21976,6 +22019,13 @@ __metadata:
   version: 4.2.0
   resolution: "smart-buffer@npm:4.2.0"
   checksum: 10c0/a16775323e1404dd43fabafe7460be13a471e021637bc7889468eb45ce6a6b207261f454e4e530a19500cc962c4cc5348583520843b363f4193cee5c00e1e539
+  languageName: node
+  linkType: hard
+
+"smol-toml@npm:1.8.0":
+  version: 1.8.0
+  resolution: "smol-toml@npm:1.8.0"
+  checksum: 10c0/4e01dbfb7c7af142176b037ebedaccccafb8229cc873feaa47c184ee31073d86e30b4b1b0fe9a5a6d083ed3ce21615eda9e81d1f5d779ad8b2e2e9459b900aea
   languageName: node
   linkType: hard
 

@@ -4,6 +4,7 @@
 // that natively, but Jest's CJS module registry does not, so babel has to
 // transform them here.
 const esModules = [
+  "@groundhogchain/",
   "@stellar/design-system",
   "stellar-hd-wallet",
   "stellar-sdk",

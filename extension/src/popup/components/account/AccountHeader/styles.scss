@@ -224,6 +224,21 @@
     top: pxToRem(64px);
     width: pxToRem(180);
 
+    button.AccountHeader__options__item {
+      width: 100%;
+      height: auto;
+      min-height: pxToRem(32);
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+
+      &:hover {
+        background: var(--sds-clr-gray-04);
+      }
+    }
+
     &__item {
       align-items: center;
       border-radius: pxToRem(4);

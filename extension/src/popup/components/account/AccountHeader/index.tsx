@@ -29,6 +29,11 @@ import { NetworkIcon } from "popup/components/manageNetwork/NetworkIcon";
 import { NetworkDetails } from "@shared/constants/stellar";
 import { Usdt0LaunchBanner } from "popup/components/account/Usdt0LaunchBanner";
 import { AccountTabs } from "popup/components/account/AccountTabs";
+import {
+  AccountSummary,
+  AccountAction,
+} from "popup/components/account/AccountSummary";
+import { ChainSelector } from "popup/components/account/ChainSelector";
 import { MaintenanceBanner } from "popup/components/MaintenanceBanner";
 import { getNetworkDisplayName } from "./getNetworkDisplayName";
 
@@ -356,13 +361,11 @@ export const AccountHeader = ({
             <Icon.Compass03 /> {t("Discover")}
           </div>
         }
+        centerContent={<ChainSelector />}
       >
         <View.Inset hasVerticalBorder>
-          <div
-            className="AccountHeader__account-info"
-            data-testid="account-header"
-          >
-            <div className="AccountHeader__account-info__details">
+          <AccountSummary
+            accountControl={
               <NavLink to={ROUTES.wallets}>
                 <div className="AccountHeader__name-key-display">
                   <div className="AccountHeader__identicon">
@@ -378,62 +381,41 @@ export const AccountHeader = ({
                   <Icon.ChevronDown />
                 </div>
               </NavLink>
-              <div
-                className="AccountHeader__total-usd-balance"
-                data-testid="account-view-total-balance"
-                key="total-balance"
-              >
-                {roundedTotalBalanceUsd}
-              </div>
-              <div className="AccountHeader__actions">
+            }
+            balance={roundedTotalBalanceUsd}
+            actions={
+              <>
                 <NavLink to={ROUTES.addFunds} data-testid="nav-link-add">
-                  <div className="AccountHeader__actions__column">
-                    <div className="AccountHeader__actions__btn">
-                      <Icon.Plus />
-                    </div>
-                    <Text as="div" size="xs" weight="medium">
-                      {t("Add")}
-                    </Text>
-                  </div>
+                  <AccountAction icon={<Icon.Plus />} label={t("Add")} />
                 </NavLink>
                 <NavLink to={ROUTES.sendPayment} data-testid="nav-link-send">
-                  <div className="AccountHeader__actions__column">
-                    <div className="AccountHeader__actions__btn">
-                      <Icon.ArrowUp />
-                    </div>
-                    <Text as="div" size="xs" weight="medium">
-                      {t("Send")}
-                    </Text>
-                  </div>
+                  <AccountAction icon={<Icon.ArrowUp />} label={t("Send")} />
                 </NavLink>
                 <NavLink to={ROUTES.swap} data-testid="nav-link-swap">
-                  <div className="AccountHeader__actions__column">
-                    <div className="AccountHeader__actions__btn">
-                      <Icon.RefreshCw02 />
-                    </div>
-                    <Text as="div" size="xs" weight="medium">
-                      {t("Swap")}
-                    </Text>
-                  </div>
+                  <AccountAction
+                    icon={<Icon.RefreshCw02 />}
+                    label={t("Swap")}
+                  />
                 </NavLink>
-              </div>
-              <Usdt0LaunchBanner />
-              {isBackgroundActive
-                ? createPortal(
-                    <LoadingBackground
-                      onClick={() => {
-                        setIsNetworkSelectorOpen(false);
-                        setIsAccountOptionsOpen(false);
-                      }}
-                      isActive={isBackgroundActive}
-                      isFullScreen
-                      isClear
-                    />,
-                    document.querySelector("#modal-root")!,
-                  )
-                : null}
-            </div>
-          </div>
+              </>
+            }
+          >
+            <Usdt0LaunchBanner />
+            {isBackgroundActive
+              ? createPortal(
+                  <LoadingBackground
+                    onClick={() => {
+                      setIsNetworkSelectorOpen(false);
+                      setIsAccountOptionsOpen(false);
+                    }}
+                    isActive={isBackgroundActive}
+                    isFullScreen
+                    isClear
+                  />,
+                  document.querySelector("#modal-root")!,
+                )
+              : null}
+          </AccountSummary>
           <AccountTabs />
         </View.Inset>
       </View.AppHeader>

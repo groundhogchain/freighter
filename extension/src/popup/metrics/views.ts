@@ -39,6 +39,7 @@ interface ScreenDef {
  * historically emits a non-screen (action) event, which this change does not touch.
  */
 const SCREEN_BY_ROUTE: Partial<Record<ROUTES, ScreenDef>> = {
+  [ROUTES.thruput]: { screen_name: "thruput_wallet" },
   [ROUTES.welcome]: { screen_name: "welcome", flow: "onboarding" },
   [ROUTES.account]: { screen_name: "account", flow: "assets" },
   [ROUTES.accountHistory]: { screen_name: "account_history", flow: "history" },

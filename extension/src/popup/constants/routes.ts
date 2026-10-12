@@ -1,4 +1,5 @@
 export enum ROUTES {
+  thruput = "/thruput",
   debug = "/debug",
   integrationTest = "/integration-test",
   welcome = "/welcome",

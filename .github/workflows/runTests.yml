@@ -2,9 +2,11 @@ name: Run Tests
 env:
   INDEXER_URL: ${{ secrets.INDEXER_URL || 'http://indexer.invalid' }}
   INDEXER_V2_URL: ${{ secrets.INDEXER_V2_BETA_URL || 'http://indexer.invalid' }}
+  GROUNDHOG_NPM_TOKEN: ${{ secrets.NPM_TOKEN || github.token }}
 on: [pull_request]
 permissions:
   contents: read
+  packages: read
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
   cancel-in-progress: true

@@ -1,0 +1,312 @@
+.Thruput {
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 40rem;
+  margin-inline: auto;
+  padding-block: 1rem 2rem;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+
+  h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    text-wrap: balance;
+  }
+  h2 {
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+  h3 {
+    font-size: 1rem;
+    font-weight: 500;
+  }
+  p {
+    margin: 0;
+    text-wrap: pretty;
+  }
+  section,
+  form,
+  fieldset {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+  fieldset {
+    border: 0;
+    padding: 0;
+    margin: 0;
+  }
+  legend {
+    font-weight: 500;
+    padding-block: 0.5rem;
+  }
+  input:not([type="checkbox"]),
+  select {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 0.625rem;
+    border: 1px solid var(--sds-clr-gray-06);
+    border-radius: 0.5rem;
+    background: var(--sds-clr-gray-02);
+    color: var(--sds-clr-gray-12);
+    font: inherit;
+    &:focus-visible {
+      outline: 2px solid var(--sds-clr-lilac-09);
+      outline-offset: -1px;
+    }
+  }
+  details {
+    min-width: 0;
+  }
+  details[open] > :not(summary) {
+    margin-block-start: 0.75rem;
+  }
+  summary {
+    cursor: pointer;
+    color: var(--sds-clr-gray-11);
+  }
+  summary:focus-visible {
+    outline: 2px solid var(--sds-clr-lilac-09);
+  }
+  dl {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.375rem;
+    margin: 0;
+  }
+  dt {
+    font-weight: 500;
+  }
+  dd {
+    margin: 0 0 0.5rem;
+    color: var(--sds-clr-gray-11);
+  }
+  pre {
+    overflow: auto;
+    max-height: 18rem;
+    font-size: 0.875rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  &__address {
+    overflow-wrap: anywhere;
+    font-family: var(--font-family-monospace, monospace);
+  }
+  &__muted {
+    color: var(--sds-clr-gray-11);
+  }
+  &__notice {
+    padding: 0.75rem;
+    background: var(--sds-clr-gray-03);
+    border-left: 3px solid var(--sds-clr-amber-09);
+  }
+  &__row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 0;
+    > * {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+  }
+  &__actions {
+    display: flex;
+    gap: 0.75rem;
+    > * {
+      flex: 1;
+    }
+  }
+  &__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    li {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      padding-block: 0.875rem;
+      border-bottom: 1px solid var(--sds-clr-gray-05);
+      min-width: 0;
+      &::before {
+        content: none;
+      }
+    }
+  }
+  &__call {
+    padding-block: 0.75rem;
+    border-top: 1px solid var(--sds-clr-gray-05);
+  }
+  &__account-choice {
+    display: flex;
+    gap: 0.75rem;
+    align-items: start;
+    input {
+      flex-shrink: 0;
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+    span {
+      min-width: 0;
+    }
+    .Thruput__address {
+      display: block;
+    }
+  }
+  &__qr {
+    background: white;
+    padding: 1rem;
+    width: fit-content;
+    border-radius: 0.5rem;
+  }
+  &__selector {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-width: 40rem;
+    margin-inline: auto;
+    select {
+      font: inherit;
+      padding: 0.5rem;
+      background: var(--sds-clr-gray-02);
+      color: var(--sds-clr-gray-12);
+      border: 1px solid var(--sds-clr-gray-06);
+      border-radius: 0.5rem;
+    }
+  }
+  @media (min-width: 640px) {
+    font-size: 0.875rem;
+    dl {
+      grid-template-columns: minmax(8rem, 1fr) minmax(0, 2fr);
+      gap: 0.75rem;
+    }
+  }
+}
+
+.ThruputHome {
+  padding-top: 0.5rem;
+  &__inset {
+    width: 100%;
+    max-width: 43rem;
+    margin-inline: auto;
+  }
+  &__summary {
+    padding-top: 1.5rem;
+  }
+  &__account {
+    position: relative;
+    select {
+      appearance: none;
+      background: transparent;
+      color: var(--sds-clr-gray-11);
+      border: 0;
+      font: inherit;
+      max-width: 70%;
+      cursor: pointer;
+      padding: 0.25rem 1.25rem 0.25rem 0;
+    }
+    > svg {
+      margin-left: -1.25rem;
+      pointer-events: none;
+    }
+  }
+  &__balance {
+    min-width: 0;
+    text-align: center;
+    > div {
+      overflow-wrap: anywhere;
+      white-space: normal;
+    }
+  }
+  &__network {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    background: none;
+    border: 0;
+    color: var(--sds-clr-gray-11);
+    font-size: 0.875rem;
+    line-height: 1.5rem;
+    letter-spacing: normal;
+    cursor: pointer;
+    padding: 0.25rem;
+    svg {
+      width: 1rem;
+      height: 1rem;
+      flex-shrink: 0;
+    }
+  }
+  &__action {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    cursor: pointer;
+    min-width: 0;
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      .AccountHeader__actions__column:hover {
+        background: var(--sds-clr-gray-03);
+      }
+    }
+    &:focus-visible {
+      outline: 2px solid var(--sds-clr-lilac-09);
+      outline-offset: 2px;
+      border-radius: 1rem;
+    }
+  }
+  &__tabs {
+    display: flex;
+    gap: 1.5rem;
+    border-bottom: 1px solid var(--sds-clr-gray-06);
+    padding-top: 1rem;
+    button {
+      background: none;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      color: var(--sds-clr-gray-11);
+      font: inherit;
+      font-weight: var(--sds-fw-medium);
+      padding: 0.75rem 0;
+      cursor: pointer;
+      &[aria-current] {
+        color: var(--sds-clr-lilac-11);
+        border-bottom-color: var(--sds-clr-lilac-11);
+      }
+    }
+  }
+  &__asset {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    > div {
+      min-width: 0;
+    }
+  }
+  &__asset-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--sds-clr-gray-03);
+    padding: 0.375rem;
+    img {
+      width: 100%;
+      height: 100%;
+    }
+  }
+  &__asset-balance {
+    text-align: right;
+  }
+}

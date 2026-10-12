@@ -89,19 +89,47 @@ describe("Thruput default home", () => {
     );
   });
 
-  it("opens receive and test funding from Add without submitting anything", async () => {
+  it("opens an address-only receive view from Add without submitting anything", async () => {
     mount();
     fireEvent.click(await screen.findByRole("button", { name: "Add" }));
     expect(
       screen.getByRole("heading", { name: "Receive" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Request test HOG" }),
+      screen.queryByRole("button", { name: "Request test HOG" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: "Thruput address QR code" }),
     ).toBeInTheDocument();
+    expect(screen.getByText(account.address)).toBeInTheDocument();
+    expect(
+      screen.queryByText(account.stellarPublicKey),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Stellar signing key")).not.toBeInTheDocument();
     expect(request).not.toHaveBeenCalledWith(
       ThruputUiAction.AIRDROP,
       expect.anything(),
     );
+  });
+
+  it("requests test HOG from home above Add token and confirms the result", async () => {
+    mount();
+    const fund = await screen.findByRole("button", {
+      name: "Request test HOG",
+    });
+    const addToken = screen.getByRole("button", { name: "Add token" });
+    expect(
+      fund.compareDocumentPosition(addToken) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    fireEvent.click(fund);
+    await waitFor(() =>
+      expect(request).toHaveBeenCalledWith(ThruputUiAction.AIRDROP, {
+        account: account.address,
+      }),
+    );
+    expect(
+      await screen.findByText("Test funding confirmed."),
+    ).toBeInTheDocument();
   });
 
   it("makes Stellar reachable through the visible chain selector", async () => {

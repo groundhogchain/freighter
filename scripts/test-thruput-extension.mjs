@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
-import { spawn } from "node:child_process";
+import { spawn, execFileSync } from "node:child_process";
 import { createServer } from "node:http";
 import { chromium } from "@playwright/test";
 import {
@@ -239,21 +239,63 @@ try {
   await wallet
     .getByText("Import a Thruput prototype account", { exact: true })
     .click();
-  await callWallet("airdrop", { account: account.address });
+  await wallet.getByRole("button", { name: "Back", exact: true }).click();
+  const fundingButton = wallet.getByRole("button", {
+    name: "Request test HOG",
+    exact: true,
+  });
+  const addTokenButton = wallet.getByRole("button", {
+    name: "Add token",
+    exact: true,
+  });
+  await fundingButton.waitFor();
+  assert.ok(
+    (await fundingButton.boundingBox()).y <
+      (await addTokenButton.boundingBox()).y,
+  );
+  await fundingButton.click();
+  await wallet.getByText("Test funding confirmed.", { exact: true }).waitFor();
   assert.ok(
     (await client.getBalance(addressFromHex(account.address))).rawBalance > 0n,
   );
-  await wallet.getByRole("button", { name: "Back", exact: true }).click();
   await wallet.getByRole("button", { name: "Refresh", exact: true }).click();
   await wallet
     .getByTestId("account-view-total-balance")
     .filter({ hasText: /[0-9].*HOG/ })
     .waitFor();
   await wallet.getByRole("button", { name: "Add", exact: true }).click();
-  await wallet
-    .getByRole("button", { name: "Request test HOG", exact: true })
-    .waitFor();
   await wallet.getByRole("heading", { name: "Receive", exact: true }).waitFor();
+  assert.equal(
+    await wallet.getByText("Stellar signing key", { exact: true }).count(),
+    0,
+  );
+  assert.equal(
+    await wallet.getByText(account.stellarPublicKey, { exact: true }).count(),
+    0,
+  );
+  assert.equal(
+    await wallet
+      .getByRole("button", { name: "Request test HOG", exact: true })
+      .count(),
+    0,
+  );
+  if (process.env.THRUPUT_QR_DECODER) {
+    const image = join(directory, "receive-qr.png");
+    await wallet.getByTestId("thruput-receive-qr").screenshot({ path: image });
+    const decoded = execFileSync(
+      process.env.THRUPUT_QR_DECODER,
+      ["--quiet", "--raw", image],
+      { encoding: "utf8" },
+    ).trim();
+    assert.equal(
+      decoded,
+      account.address,
+      "rendered QR decodes to the exact Thruput address",
+    );
+    console.log(
+      "PASS: rendered receive QR decodes to the selected account address",
+    );
+  }
   await wallet.getByRole("button", { name: "Back", exact: true }).click();
   await wallet.getByRole("button", { name: "Send", exact: true }).click();
   await wallet

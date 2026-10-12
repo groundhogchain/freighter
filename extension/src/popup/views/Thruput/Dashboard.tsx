@@ -208,39 +208,9 @@ export const Dashboard = ({
               >
                 {t("Wallet settings")}
               </Button>
-            </>
-          ) : null}
-          {panel === ThruputPanel.ADD ? (
-            <p className="Thruput__muted">
-              {t("Experimental network. Test tokens have no monetary value.")}
-            </p>
-          ) : null}
-          {error ? (
-            <p className="Thruput__notice" role="alert">
-              {t(error)}
-            </p>
-          ) : null}
-          {notice ? (
-            <p className="Thruput__notice Thruput__address" role="status">
-              {notice}
-            </p>
-          ) : null}
-          {panel === ThruputPanel.ADD ? (
-            <section>
-              <h1>{t("Receive")}</h1>
-              <CopyText textToCopy={account.address} doneLabel={t("Copied!")}>
-                <p className="Thruput__address">{account.address}</p>
-              </CopyText>
               <details>
-                <summary>{t("Receive and account details")}</summary>
-                <div className="Thruput__qr">
-                  <QRCodeSVG value={account.address} size={160} />
-                </div>
+                <summary>{t("Technical account details")}</summary>
                 <dl>
-                  <dt>{t("Stellar signing key")}</dt>
-                  <dd className="Thruput__address">
-                    {account.stellarPublicKey}
-                  </dd>
                   <dt>{t("Network identity")}</dt>
                   <dd className="Thruput__address">{state.networkHash}</dd>
                   {account.importSource ? (
@@ -273,6 +243,48 @@ export const Dashboard = ({
                   {t("Refresh network identity after a reset")}
                 </Button>
               </details>
+            </>
+          ) : null}
+          {panel === ThruputPanel.ADD ? (
+            <p className="Thruput__muted">
+              {t("Experimental network. Test tokens have no monetary value.")}
+            </p>
+          ) : null}
+          {error ? (
+            <p className="Thruput__notice" role="alert">
+              {t(error)}
+            </p>
+          ) : null}
+          {notice ? (
+            <p className="Thruput__notice Thruput__address" role="status">
+              {notice}
+            </p>
+          ) : null}
+          {panel === ThruputPanel.ADD ? (
+            <section>
+              <h1>{t("Receive")}</h1>
+              <CopyText textToCopy={account.address} doneLabel={t("Copied!")}>
+                <p className="Thruput__address">{account.address}</p>
+              </CopyText>
+              <div className="Thruput__qr" data-testid="thruput-receive-qr">
+                <QRCodeSVG
+                  value={account.address}
+                  size={160}
+                  marginSize={4}
+                  role="img"
+                  aria-label={t("Thruput address QR code")}
+                />
+              </div>
+              <p>
+                {state.network === ThruputNetwork.LOCALNET
+                  ? t("Thruput Localnet")
+                  : t("Thruput Devnet")}
+              </p>
+              <p className="Thruput__muted">
+                {t(
+                  "This QR code contains only your Thruput address. Select the same network in the sending wallet.",
+                )}
+              </p>
             </section>
           ) : null}
           {panel === ThruputPanel.TOKENS ? (
@@ -357,18 +369,6 @@ export const Dashboard = ({
                 type="button"
                 size="sm"
                 variant="secondary"
-                onClick={() => setPanel(ThruputPanel.ADD)}
-              >
-                {t("Add token")}
-              </Button>
-            </section>
-          ) : null}
-          {panel === ThruputPanel.ADD ? (
-            <section>
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
                 disabled={busy}
                 onClick={() =>
                   run(async () => {
@@ -382,6 +382,18 @@ export const Dashboard = ({
               >
                 {t("Request test HOG")}
               </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => setPanel(ThruputPanel.ADD)}
+              >
+                {t("Add token")}
+              </Button>
+            </section>
+          ) : null}
+          {panel === ThruputPanel.ADD ? (
+            <section>
               <details>
                 <summary>{t("Track a token")}</summary>
                 <form onSubmit={addToken}>

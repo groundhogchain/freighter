@@ -341,10 +341,10 @@ export const Dashboard = ({
                               )}
                         </div>
                       </div>
-                      <details>
-                        <summary>{t("Token details")}</summary>
-                        <p className="Thruput__address">{asset.address}</p>
-                        {asset.address !== HOG_TOKEN.address ? (
+                      {asset.address !== HOG_TOKEN.address ? (
+                        <details>
+                          <summary>{t("Token details")}</summary>
+                          <p className="Thruput__address">{asset.address}</p>
                           <Button
                             type="button"
                             size="sm"
@@ -366,8 +366,8 @@ export const Dashboard = ({
                           >
                             {t("Stop tracking token")}
                           </Button>
-                        ) : null}
-                      </details>
+                        </details>
+                      ) : null}
                     </li>
                   ))}
                 </ul>

@@ -117,7 +117,8 @@ try {
   wallet.on("pageerror", (error) =>
     console.error("Wallet page error:", error.message),
   );
-  await wallet.goto(`chrome-extension://${extensionId}/index.html#/welcome`);
+  await wallet.goto(`chrome-extension://${extensionId}/index.html#/`);
+  await wallet.waitForURL("**/index.html#/welcome");
   // Exercise the real encrypted-vault creation handler without logging its secrets.
   const created = await wallet.evaluate(async () =>
     chrome.runtime.sendMessage({
@@ -127,6 +128,23 @@ try {
     }),
   );
   assert.ok(created.publicKey, "account creation returned a public key");
+  const confirmed = await wallet.evaluate(async () => {
+    const backup = await chrome.runtime.sendMessage({
+      type: "SHOW_BACKUP_PHRASE",
+      activePublicKey: null,
+      password: "disposable-fixture-password",
+    });
+    const result = await chrome.runtime.sendMessage({
+      type: "CONFIRM_MNEMONIC_PHRASE",
+      mnemonicPhraseToConfirm: backup.mnemonicPhrase,
+    });
+    return result.isCorrectPhrase;
+  });
+  assert.equal(
+    confirmed,
+    true,
+    "fixture completes the normal onboarding state",
+  );
   const callWallet = (action, input = {}) =>
     wallet.evaluate(
       async ({ action, input }) => {
@@ -141,11 +159,14 @@ try {
       { action, input },
     );
   await callWallet("network", { network: hosted ? "devnet" : "localnet" });
-  await wallet.goto(`chrome-extension://${extensionId}/index.html#/thruput`);
+  const stellarBalanceRequests = [];
+  wallet.on("request", (request) => {
+    if (/127\.0\.0\.1:800[01].*balances/.test(request.url()))
+      stellarBalanceRequests.push(request.url());
+  });
+  await wallet.goto(`chrome-extension://${extensionId}/index.html#/`);
   try {
-    await wallet
-      .getByRole("heading", { name: "Your Thruput account" })
-      .waitFor();
+    await wallet.getByRole("heading", { name: "Assets" }).waitFor();
   } catch (error) {
     console.error("Wallet route:", wallet.url());
     console.error(
@@ -173,6 +194,17 @@ try {
       return response.mnemonicPhrase;
     });
   const originalBackup = await backup();
+  assert.equal(
+    await wallet
+      .getByRole("button", { name: "Swap", exact: true })
+      .isDisabled(),
+    true,
+  );
+  assert.equal(
+    await wallet.getByLabel("Chain", { exact: true }).inputValue(),
+    "thruput",
+  );
+  await wallet.getByRole("button", { name: "Settings", exact: true }).click();
   await wallet
     .getByText("Import a Thruput prototype account", { exact: true })
     .click();
@@ -211,7 +243,29 @@ try {
   assert.ok(
     (await client.getBalance(addressFromHex(account.address))).rawBalance > 0n,
   );
+  await wallet.getByRole("button", { name: "Back", exact: true }).click();
   await wallet.getByRole("button", { name: "Refresh", exact: true }).click();
+  await wallet
+    .getByTestId("account-view-total-balance")
+    .filter({ hasText: /[0-9].*HOG/ })
+    .waitFor();
+  await wallet.getByRole("button", { name: "Add", exact: true }).click();
+  await wallet
+    .getByRole("button", { name: "Request test HOG", exact: true })
+    .waitFor();
+  await wallet.getByRole("heading", { name: "Receive", exact: true }).waitFor();
+  await wallet.getByRole("button", { name: "Back", exact: true }).click();
+  await wallet.getByRole("button", { name: "Send", exact: true }).click();
+  await wallet
+    .getByLabel("Recipient Thruput address", { exact: true })
+    .waitFor();
+  await wallet.getByRole("button", { name: "Back", exact: true }).click();
+  await wallet.getByRole("heading", { name: "Assets" }).waitFor();
+  assert.deepEqual(
+    stellarBalanceRequests,
+    [],
+    "Thruput home does not fetch Stellar balances",
+  );
   for (const width of [360, 800]) {
     await wallet.setViewportSize({ width, height: 760 });
     assert.equal(
@@ -231,10 +285,12 @@ try {
   }
   await wallet.evaluate(() => localStorage.setItem("i18nextLng", "pt"));
   await wallet.reload();
-  await wallet.getByRole("heading", { name: "Sua conta Thruput" }).waitFor();
+  await wallet
+    .getByRole("button", { name: "Adicionar", exact: true })
+    .waitFor();
   await wallet.evaluate(() => localStorage.setItem("i18nextLng", "en"));
   await wallet.reload();
-  await wallet.getByRole("heading", { name: "Your Thruput account" }).waitFor();
+  await wallet.getByRole("heading", { name: "Assets" }).waitFor();
 
   const page = await context.newPage();
   await page.goto(`http://127.0.0.1:${site.address().port}`);
@@ -541,7 +597,8 @@ try {
   );
   await wallet.close();
   const reopened = await context.newPage();
-  await reopened.goto(`chrome-extension://${extensionId}/index.html#/thruput`);
+  await reopened.goto(`chrome-extension://${extensionId}/index.html#/`);
+  await reopened.getByRole("button", { name: "History", exact: true }).click();
   await reopened.getByText(signed.hash, { exact: true }).waitFor();
   await invoke({ method: "disconnect" });
   assert.equal((await invoke({ method: "getSession" })).accounts.length, 0);

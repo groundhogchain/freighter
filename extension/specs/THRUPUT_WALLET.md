@@ -67,6 +67,37 @@ Provide the ordinary Freighter backend environment variables for builds and
 Stellar testing. Synthetic localhost endpoints are sufficient for a compile
 check, but are not evidence that Stellar network flows work.
 
+## Manual testing
+
+Load `extension/build` with **Load unpacked** at `chrome://extensions`, with
+Developer mode enabled. After each build, reload the extension and reopen its
+popup.
+
+Thruput is the default home screen. The visible chain selector opens the Stellar
+home when needed. The two homes share the account summary and action-tile
+components. On Thruput, the main balance is a HOG quantity, not a fiat total.
+Swap is disabled. **Add** opens receive, test funding, and token tracking;
+**Send** opens the Thruput transfer form; **History** opens activity and recovery.
+The network label opens settings, including network selection and prototype
+import. The Stellar home still requires working Freighter backend URLs.
+
+Start a compatible local RPC before selecting Localnet. On the development
+machine, the tested ordinary-node command is:
+
+```sh
+~/Work/groundhog-rpc/target/release/thruput node
+```
+
+The older `target/debug/groundhog` binary reports CLI 0.22.1 and RPC wire 8.1.0.
+The pinned wallet SDK requires wire `>=11.1.0 <12.0.0`; the local release binary
+is CLI 0.27.0. A node can start successfully while exposing an incompatible RPC.
+Use the newer binary rather than removing the wallet's compatibility check.
+
+The ordinary managed node passes the basic wallet browser acceptance check.
+Authorized simulation additionally requires the runtime fix described below.
+The temporary runtime override is for simulation qualification, not a prerequisite
+for ordinary balance, funding, signing, or submission tests.
+
 ## Qualification boundaries
 
 The first end-to-end checkpoint is account selection, HOG balance, dApp connect,

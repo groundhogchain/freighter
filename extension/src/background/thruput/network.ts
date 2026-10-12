@@ -29,7 +29,7 @@ export const requireThruputCompatibility = async (
   ) {
     throw new WalletProviderError(
       4200,
-      "This Thruput endpoint needs an update before it can be used with this wallet.",
+      "This wallet requires RPC wire 11.x, version 11.1 or newer. Update your Thruput CLI or choose a compatible endpoint.",
     );
   }
 };

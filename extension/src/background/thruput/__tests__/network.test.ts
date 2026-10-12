@@ -17,7 +17,7 @@ describe("Thruput RPC compatibility", () => {
       ).resolves.toBeUndefined();
     },
   );
-  it.each(["5.2.0", "12.0.0", "unknown"])(
+  it.each(["5.2.0", "8.1.0", "11.0.0", "12.0.0", "unknown"])(
     "rejects incompatible or unknown wire format %s",
     async (wireFormat) => {
       const getVersion = jest.fn(async () => ({

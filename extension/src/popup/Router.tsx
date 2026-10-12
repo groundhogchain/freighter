@@ -22,8 +22,8 @@ import { navigate } from "popup/ducks/views";
 
 import { AppError } from "popup/components/AppError";
 
+import { Home } from "popup/views/Home";
 import { ActiveTabProvider } from "popup/views/Account/contexts/activeTabContext";
-import { Account } from "popup/views/Account";
 import { AccountHistory } from "popup/views/AccountHistory";
 import { AccountCreator } from "popup/views/AccountCreator";
 import { AddAccount } from "popup/views/AddAccount/AddAccount";
@@ -166,7 +166,9 @@ const Layout = () => {
   return (
     <View
       isAppLayout={isAppLayout}
-      isScrollableView={location.pathname === "/"}
+      isScrollableView={
+        location.pathname === "/" || location.pathname === ROUTES.thruput
+      }
     >
       <Outlet />
     </View>
@@ -181,14 +183,7 @@ export const Router = () => (
     <Routes>
       <Route path="/" element={<Layout />}>
         <Route path={ROUTES.thruput} element={<Thruput />} />
-        <Route
-          index
-          element={
-            <ActiveTabProvider>
-              <Account />
-            </ActiveTabProvider>
-          }
-        ></Route>
+        <Route index element={<Home />}></Route>
         <Route
           path={ROUTES.accountHistory}
           element={<AccountHistory />}

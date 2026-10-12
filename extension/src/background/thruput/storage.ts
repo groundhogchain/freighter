@@ -23,6 +23,7 @@ export interface ThruputStorage extends ThruputNetworkSelection {
   approvals: ThruputApproval[];
   outgoing: ThruputOutgoing[];
   airdrops: Record<string, string>;
+  selectedAccounts?: Record<string, string>;
 }
 
 export const defaultThruputStorage = (): ThruputStorage => ({
@@ -33,6 +34,7 @@ export const defaultThruputStorage = (): ThruputStorage => ({
   approvals: [],
   outgoing: [],
   airdrops: {},
+  selectedAccounts: {},
 });
 
 /** Corrupt recovery data is preserved on disk and blocks mutation. */
@@ -57,6 +59,18 @@ export const parseThruputStorage = (input: unknown): ThruputStorage => {
     throw new Error("Unsupported or damaged Thruput storage");
   }
   parseWalletNetworkHash(data.networkHash);
+  if (data.selectedAccounts !== undefined) {
+    if (
+      !data.selectedAccounts ||
+      typeof data.selectedAccounts !== "object" ||
+      Array.isArray(data.selectedAccounts)
+    )
+      throw new Error("Thruput account selection is damaged");
+    for (const [network, account] of Object.entries(data.selectedAccounts)) {
+      parseWalletNetworkHash(network);
+      parseWalletHex32(account);
+    }
+  }
   for (const [network, tokens] of Object.entries(data.tokens)) {
     parseWalletNetworkHash(network);
     if (!Array.isArray(tokens))

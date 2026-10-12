@@ -49,6 +49,14 @@ export const TransactionReview = ({
             <dd>{call.gasLimit}</dd>
             {call.transfer ? (
               <>
+                {call.transfer.displayAmount !== undefined ? (
+                  <>
+                    <dt>{t("Decoded transfer amount")}</dt>
+                    <dd>
+                      {call.transfer.displayAmount} {call.transfer.symbol}
+                    </dd>
+                  </>
+                ) : null}
                 <dt>{t("Decoded transfer recipient")}</dt>
                 <dd className="Thruput__address">{call.transfer.recipient}</dd>
                 <dt>{t("Amount in token base units")}</dt>

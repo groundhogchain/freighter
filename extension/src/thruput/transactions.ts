@@ -1,4 +1,4 @@
-import { toHex0x, type Transaction } from "@groundhogchain/client";
+import { toHex0x, formatUnits, type Transaction } from "@groundhogchain/client";
 import { DefaultWallet, ERC20 } from "@groundhogchain/client/contracts";
 import { deriveContractAddress } from "@groundhogchain/client/contract";
 import {
@@ -9,13 +9,19 @@ import {
 } from "@groundhogchain/client/provider";
 import { codec, serialize, sha256Hash } from "@groundhogchain/protocol";
 import { toProviderAccount } from "./accounts";
+import type { ThruputToken } from "./networks";
 
 export interface ThruputCallReview {
   target: string;
   entrypoint: string;
   gasLimit: string;
   calldata: string;
-  transfer?: { recipient: string; rawAmount: string };
+  transfer?: {
+    recipient: string;
+    rawAmount: string;
+    symbol?: string;
+    displayAmount?: string;
+  };
 }
 
 export interface ThruputTransactionReview {
@@ -32,6 +38,29 @@ export interface ThruputTransactionReview {
   };
   attachedContracts: string[];
 }
+
+export const describeThruputAmounts = (
+  review: ThruputTransactionReview,
+  tokens: ThruputToken[],
+): ThruputTransactionReview => ({
+  ...review,
+  calls: review.calls.map((call) => {
+    const token = tokens.find((item) => item.address === call.target);
+    return call.transfer && token
+      ? {
+          ...call,
+          transfer: {
+            ...call.transfer,
+            symbol: token.symbol,
+            displayAmount: formatUnits(
+              BigInt(call.transfer.rawAmount),
+              token.decimals,
+            ),
+          },
+        }
+      : call;
+  }),
+});
 
 const sameBytes = (a: Uint8Array, b: Uint8Array) => toHex0x(a) === toHex0x(b);
 

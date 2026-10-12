@@ -3,6 +3,7 @@ import {
   HttpTransport,
   toHex0x,
   type Transaction,
+  type CoreGroundhogClient,
 } from "@groundhogchain/client";
 import {
   WalletProviderError,
@@ -18,6 +19,21 @@ import {
   type ThruputNetworkSelection,
 } from "thruput/networks";
 
+export const requireThruputCompatibility = async (
+  client: Pick<CoreGroundhogClient, "getVersion">,
+) => {
+  const version = await client.getVersion();
+  if (
+    !semver.valid(version.wireFormat) ||
+    !semver.satisfies(version.wireFormat, ">=11.1.0 <12.0.0")
+  ) {
+    throw new WalletProviderError(
+      4200,
+      "This Thruput endpoint needs an update before it can be used with this wallet.",
+    );
+  }
+};
+
 /** Never learn a new signing identity implicitly from an RPC response. */
 export const connectThruput = async (selection: ThruputNetworkSelection) => {
   const client = await createGroundhogClient({
@@ -25,6 +41,7 @@ export const connectThruput = async (selection: ThruputNetworkSelection) => {
       timeoutMs: 15000,
     }),
   });
+  await requireThruputCompatibility(client);
   const identity = await client.getNetworkInfo();
   if (toHex0x(identity.networkHash).slice(2) !== selection.networkHash) {
     throw new WalletProviderError(4901, "Thruput network identity changed");

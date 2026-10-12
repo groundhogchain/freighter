@@ -14,6 +14,7 @@ import {
 } from "background/helpers/dataStorageAccess";
 import { SessionTimer } from "background/helpers/session";
 import { buildStore } from "background/store";
+import { allAccountsSelector } from "background/ducks/session";
 import { importAccount } from "background/messageListener/handlers/importAccount";
 import { getThruputVault } from "./vault";
 
@@ -57,9 +58,10 @@ export const importThruputAccount = async (
   const { key, importSource } = deriveThruputImport(input);
   const vault = await getThruputVault();
   if (!vault.sessionKey) throw new Error("Unlock the wallet first");
+  const sessionStore = await buildStore();
   if (
-    vault.accounts.some(
-      (account) => account.stellarPublicKey === key.publicKey(),
+    allAccountsSelector(sessionStore.getState()).some(
+      (account) => account.publicKey === key.publicKey(),
     )
   )
     throw new Error("Account is already present");
@@ -77,7 +79,7 @@ export const importThruputAccount = async (
       password,
       privateKey: key.secret(),
     },
-    sessionStore: await buildStore(),
+    sessionStore,
     localStore,
     keyManager,
     sessionTimer: new SessionTimer(localStore),

@@ -151,6 +151,7 @@ beforeEach(() => {
 });
 
 const connect = async () => {
+  (browser.windows.create as jest.Mock).mockClear();
   const pending = request({ method: "connect" });
   const id = await approvalId();
   expect(
@@ -189,6 +190,7 @@ const unsignedTransaction = () =>
   );
 
 const sign = async () => {
+  (browser.windows.create as jest.Mock).mockClear();
   const pending = request({
     method: "signTransaction",
     params: {
@@ -212,6 +214,97 @@ const sign = async () => {
 };
 
 describe("Thruput provider boundaries", () => {
+  it("honors cancellation while the initial session read is still pending", async () => {
+    const vault = jest.requireMock<typeof import("../vault")>("../vault");
+    let resume!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      resume = resolve;
+    });
+    (vault.getThruputVault as jest.Mock).mockImplementationOnce(async () => {
+      await gate;
+      return {
+        sessionKey: "session-1",
+        accounts: [account],
+        activePublicKey: account.stellarPublicKey,
+      };
+    });
+    const pending = request({ method: "connect" });
+    await waitFor(() => expect(vault.getThruputVault).toHaveBeenCalled());
+    await handle(
+      { type: EXTERNAL_SERVICE_TYPES.THRUPUT_CANCEL, id: pending.id },
+      pageSender,
+    );
+    resume();
+    expect(await pending.response).toMatchObject({ error: { code: 4001 } });
+    expect(browser.windows.create).not.toHaveBeenCalled();
+  });
+  it("rejects a wrong signing network before opening an approval", async () => {
+    await connect();
+    const response = await request({
+      method: "signTransaction",
+      params: {
+        account: account.address,
+        networkHash: "0".repeat(64),
+        transaction: unsignedTransaction(),
+      },
+    }).response;
+    expect(response).toMatchObject({ error: { code: 4901 } });
+    expect(browser.windows.create).not.toHaveBeenCalled();
+    expect(signer).not.toHaveBeenCalled();
+  });
+
+  it("does not return a signature when locking races signing", async () => {
+    await connect();
+    let resume!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      resume = resolve;
+    });
+    const implementation = signer.getMockImplementation()!;
+    signer.mockImplementationOnce(async (...args) => {
+      await gate;
+      return implementation(...args);
+    });
+    const pending = request({
+      method: "signTransaction",
+      params: {
+        account: account.address,
+        networkHash: disk.networkHash,
+        transaction: unsignedTransaction(),
+      },
+    });
+    const id = await approvalId();
+    const decision = call(ThruputUiAction.DECIDE, {
+      id,
+      accepted: true,
+      accounts: [],
+    });
+    await waitFor(() => expect(signer).toHaveBeenCalled());
+    const vault = jest.requireMock<typeof import("../vault")>("../vault");
+    (vault.getThruputVault as jest.Mock).mockResolvedValue({
+      sessionKey: "",
+      accounts: [],
+      activePublicKey: account.stellarPublicKey,
+    });
+    await call(ThruputUiAction.STATE);
+    resume();
+    expect(await decision).toMatchObject({ error: { code: 4100 } });
+    expect(await pending.response).toMatchObject({ error: { code: 4001 } });
+    expect(disk.approvals).toHaveLength(0);
+    expect(send).not.toHaveBeenCalled();
+  });
+  it("retires durable approvals and grants on persisted account selection", async () => {
+    await connect();
+    await sign();
+    expect(disk.approvals).toHaveLength(1);
+    await call(ThruputUiAction.SELECT_ACCOUNT, { account: account.address });
+    await call(ThruputUiAction.STATE);
+    expect(disk.selectedAccounts?.[disk.networkHash]).toBe(account.address);
+    expect(disk.approvals).toHaveLength(0);
+    expect(await request({ method: "getSession" }).response).toMatchObject({
+      result: { accounts: [] },
+    });
+    expect(send).not.toHaveBeenCalled();
+  });
   it("keeps a connection request through unlock without granting access early", async () => {
     const vault = jest.requireMock<typeof import("../vault")>("../vault");
     (vault.getThruputVault as jest.Mock).mockResolvedValue({
@@ -224,6 +317,12 @@ describe("Thruput provider boundaries", () => {
     expect(await request({ method: "getSession" }).response).toMatchObject({
       result: { accounts: [] },
     });
+    (vault.getThruputVault as jest.Mock).mockResolvedValue({
+      sessionKey: "",
+      accounts: [],
+      activePublicKey: "public-metadata-hydrating",
+    });
+    await call(ThruputUiAction.STATE);
     (vault.getThruputVault as jest.Mock).mockResolvedValue({
       sessionKey: "new-session",
       accounts: [account],

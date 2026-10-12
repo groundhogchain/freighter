@@ -5,30 +5,20 @@ import { QRCodeSVG } from "qrcode.react";
 import { formatUnits } from "@groundhogchain/client";
 import { thruputRequest } from "popup/helpers/thruput";
 import type { ThruputAccount } from "thruput/accounts";
-import { HOG_TOKEN, ThruputNetwork, type ThruputToken } from "thruput/networks";
+import { HOG_TOKEN, ThruputNetwork, THRUPUT_NETWORKS } from "thruput/networks";
+import { mergeThruputHistory } from "thruput/history";
 import {
   ThruputOutcome,
   ThruputUiAction,
+  ThruputHistoryKind,
+  type ThruputHistoryPage,
   type ThruputBalance,
   type ThruputState,
+  type ThruputOutgoing,
 } from "thruput/types";
 
-interface History {
-  history: {
-    refs: { txHash: string; height: string }[];
-    oldestBlock: string;
-    latestBlock: string;
-  };
-  incoming: {
-    token: ThruputToken;
-    unavailable?: boolean;
-    events: {
-      txHash: string;
-      sequenceNumber: number;
-      fields: { amount: string };
-    }[];
-  }[];
-}
+const recoveryKey = (record: ThruputOutgoing) =>
+  `${record.networkHash}:${record.hash}`;
 
 export const Dashboard = ({
   state,
@@ -41,7 +31,7 @@ export const Dashboard = ({
 }) => {
   const { t } = useTranslation();
   const [balances, setBalances] = useState<ThruputBalance[]>();
-  const [history, setHistory] = useState<History>();
+  const [history, setHistory] = useState<ThruputHistoryPage>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -56,8 +46,13 @@ export const Dashboard = ({
       .then((result) => {
         if (live.current) setBalances(result);
       })
-      .catch(() => {
-        if (live.current) setError(t("Balances could not be loaded."));
+      .catch((cause: unknown) => {
+        if (live.current)
+          setError(
+            cause instanceof Error
+              ? t(cause.message)
+              : t("Balances could not be loaded."),
+          );
       });
     return () => {
       live.current = false;
@@ -81,7 +76,9 @@ export const Dashboard = ({
     } catch (cause) {
       if (live.current)
         setError(
-          cause instanceof Error ? cause.message : t("Wallet request failed"),
+          cause instanceof Error
+            ? t(cause.message)
+            : t("Wallet request failed"),
         );
     } finally {
       if (live.current) {
@@ -134,9 +131,7 @@ export const Dashboard = ({
     [ThruputOutcome.FAILED]: t("Execution failed"),
   };
   const outgoing = state.outgoing.filter(
-    (record) =>
-      record.account === account.address &&
-      record.networkHash === state.networkHash,
+    (record) => record.account === account.address,
   );
   return (
     <main className="Thruput" aria-busy={busy}>
@@ -165,7 +160,7 @@ export const Dashboard = ({
       </p>
       {error ? (
         <p className="Thruput__notice" role="alert">
-          {error}
+          {t(error)}
         </p>
       ) : null}
       {notice ? (
@@ -372,12 +367,17 @@ export const Dashboard = ({
           )}
         </p>
         {!outgoing.length ? (
-          <p>{t("No outgoing transactions on this network.")}</p>
+          <p>{t("No outgoing transactions for this account.")}</p>
         ) : (
           <ul role="list" className="Thruput__list">
             {outgoing.map((record) => (
-              <li key={record.hash}>
+              <li key={recoveryKey(record)}>
                 <p>{outcome[record.outcome]}</p>
+                <p>{THRUPUT_NETWORKS[record.network].name}</p>
+                <details>
+                  <summary>{t("Original network identity")}</summary>
+                  <p className="Thruput__address">{record.networkHash}</p>
+                </details>
                 <p className="Thruput__address">{record.hash}</p>
                 {record.diagnostic ? <p>{record.diagnostic}</p> : null}
                 <Button
@@ -402,14 +402,14 @@ export const Dashboard = ({
                   <label className="Thruput__account-choice">
                     <input
                       type="checkbox"
-                      name={`ack-${record.hash}`}
-                      checked={acknowledged.includes(record.hash)}
+                      name={`ack-${recoveryKey(record)}`}
+                      checked={acknowledged.includes(recoveryKey(record))}
                       onChange={(event) =>
                         setAcknowledged(
                           event.target.checked
-                            ? [...acknowledged, record.hash]
+                            ? [...acknowledged, recoveryKey(record)]
                             : acknowledged.filter(
-                                (hash) => hash !== record.hash,
+                                (hash) => hash !== recoveryKey(record),
                               ),
                         )
                       }
@@ -424,7 +424,9 @@ export const Dashboard = ({
                     type="button"
                     size="sm"
                     variant="secondary"
-                    disabled={busy || !acknowledged.includes(record.hash)}
+                    disabled={
+                      busy || !acknowledged.includes(recoveryKey(record))
+                    }
                     onClick={() =>
                       run(async () => {
                         await thruputRequest(ThruputUiAction.ACKNOWLEDGE, {
@@ -457,11 +459,15 @@ export const Dashboard = ({
           disabled={busy}
           onClick={() =>
             run(async () => {
-              const result = await thruputRequest<History>(
+              const result = await thruputRequest<ThruputHistoryPage>(
                 ThruputUiAction.HISTORY,
-                { account: account.address },
+                { account: account.address, networkHash: state.networkHash },
               );
-              if (live.current) setHistory(result);
+              if (live.current)
+                setHistory({
+                  ...result,
+                  rows: mergeThruputHistory([], result.rows),
+                });
             })
           }
         >
@@ -469,41 +475,82 @@ export const Dashboard = ({
         </Button>
         {history ? (
           <ul role="list" className="Thruput__list">
-            {history.history.refs.map((record) => (
-              <li key={record.txHash}>
+            {history.rows.map((record) => (
+              <li key={record.id}>
                 <p>
-                  {t("Account transaction at block {{height}}", {
-                    height: record.height,
-                  })}
+                  {record.kind === ThruputHistoryKind.RECEIVED &&
+                  record.token &&
+                  record.rawAmount !== undefined
+                    ? t("Received {{amount}} {{symbol}}", {
+                        amount: formatUnits(
+                          BigInt(record.rawAmount),
+                          record.token.decimals,
+                        ),
+                        symbol: record.token.symbol,
+                      })
+                    : t("Account transaction at block {{height}}", {
+                        height: record.height,
+                      })}
                 </p>
-                <p className="Thruput__address">{record.txHash}</p>
+                <p className="Thruput__address">{record.hash}</p>
               </li>
             ))}
-            {history.incoming.flatMap((entry) =>
-              entry.unavailable
-                ? [
-                    <li key={entry.token.address}>
-                      {t("{{symbol}} transfer history unavailable", {
-                        symbol: entry.token.symbol,
-                      })}
-                    </li>,
-                  ]
-                : entry.events.map((event) => (
-                    <li key={`${event.txHash}:${event.sequenceNumber}`}>
-                      <p>
-                        {t("Received {{amount}} {{symbol}}", {
-                          amount: formatUnits(
-                            BigInt(event.fields.amount),
-                            entry.token.decimals,
-                          ),
-                          symbol: entry.token.symbol,
-                        })}
-                      </p>
-                      <p className="Thruput__address">{event.txHash}</p>
-                    </li>
-                  )),
-            )}
+            {history.unavailable.map((source) => (
+              <li key={source}>
+                {t("{{symbol}} transfer history unavailable", {
+                  symbol: source,
+                })}
+              </li>
+            ))}
           </ul>
+        ) : null}
+        {history?.hasMore ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            disabled={busy}
+            onClick={() =>
+              run(async () => {
+                const result = await thruputRequest<ThruputHistoryPage>(
+                  ThruputUiAction.HISTORY,
+                  {
+                    account: account.address,
+                    networkHash: state.networkHash,
+                    cursors: history.cursors,
+                  },
+                );
+                if (live.current)
+                  setHistory((previous) => ({
+                    ...result,
+                    rows: mergeThruputHistory(
+                      previous?.rows || [],
+                      result.rows,
+                    ),
+                  }));
+              })
+            }
+          >
+            {t("Load more activity or retry unavailable sources")}
+          </Button>
+        ) : null}
+        {history?.coverage.length ? (
+          <details>
+            <summary>{t("History coverage")}</summary>
+            <ul role="list" className="Thruput__list">
+              {history.coverage.map((coverage) => (
+                <li key={coverage.source}>
+                  <p className="Thruput__address">{coverage.source}</p>
+                  <p>
+                    {t("Indexer retains blocks {{oldest}} to {{latest}}.", {
+                      oldest: coverage.oldestBlock,
+                      latest: coverage.latestBlock,
+                    })}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </details>
         ) : null}
       </section>
       <section>

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
 import { spawn } from "node:child_process";
@@ -16,7 +16,14 @@ import {
   toHex0x,
   hashFromHex,
   ExecResult,
+  deriveEntrypointID,
+  prepareContractDeployment,
 } from "@groundhogchain/client";
+import {
+  defineContractMethod,
+  createContractCodecContext,
+  ContractTypeKind,
+} from "@groundhogchain/client/contract";
 import { ERC20, DefaultWallet } from "@groundhogchain/client/contracts";
 import { verifySignTransactionResult } from "@groundhogchain/client/provider";
 import {
@@ -26,36 +33,43 @@ import {
   gasAmount,
 } from "@groundhogchain/protocol";
 
-// Disposable browser profile and local chain only. Never use a user's wallet.
+// Disposable browser profile and test funds only. Never use a user's wallet.
+const hosted = process.argv.includes("--devnet");
 const cli = process.env.THRUPUT_CLI;
-if (!cli || !cli.startsWith("/"))
+if (!hosted && (!cli || !cli.startsWith("/")))
   throw new Error("Set THRUPUT_CLI to the absolute path of a compatible CLI");
 const extension = resolve("extension/build");
 const directory = await mkdtemp(join(tmpdir(), "freighter-thruput-"));
-const probe = createServer();
-await new Promise((accept, reject) => {
-  probe.once("error", reject);
-  probe.listen(9545, "127.0.0.1", accept);
-});
-await new Promise((accept) => probe.close(accept));
-const node = spawn(
-  cli,
-  ["--non-interactive", "--json", "node", "--ramdb-bytes", "512M"],
-  {
-    cwd: directory,
-    env: { ...process.env, XDG_CONFIG_HOME: join(directory, "config") },
-    stdio: ["ignore", "pipe", "pipe"],
-  },
-);
+let node;
+if (!hosted) {
+  const probe = createServer();
+  await new Promise((accept, reject) => {
+    probe.once("error", reject);
+    probe.listen(9545, "127.0.0.1", accept);
+  });
+  await new Promise((accept) => probe.close(accept));
+  node = spawn(
+    cli,
+    ["--non-interactive", "--json", "node", "--ramdb-bytes", "512M"],
+    {
+      cwd: directory,
+      env: { ...process.env, XDG_CONFIG_HOME: join(directory, "config") },
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+}
 let nodeLog = "";
-node.stdout.on("data", (chunk) => {
+node?.stdout.on("data", (chunk) => {
   nodeLog = (nodeLog + chunk).slice(-16000);
 });
-node.stderr.on("data", (chunk) => {
+node?.stderr.on("data", (chunk) => {
   nodeLog = (nodeLog + chunk).slice(-16000);
 });
 const client = await createGroundhogClient({
-  transport: new HttpTransport("http://127.0.0.1:9545", { timeoutMs: 2000 }),
+  transport: new HttpTransport(
+    hosted ? "https://rpc.thruput.network" : "http://127.0.0.1:9545",
+    { timeoutMs: hosted ? 15000 : 2000 },
+  ),
 });
 let context;
 const site = createServer((_, response) => {
@@ -67,20 +81,24 @@ const site = createServer((_, response) => {
 const delay = (ms) => new Promise((accept) => setTimeout(accept, ms));
 try {
   for (let attempt = 0; ; attempt++) {
-    if (node.exitCode !== null) throw new Error(`Node exited: ${nodeLog}`);
+    if (node && node.exitCode !== null)
+      throw new Error(`Node exited: ${nodeLog}`);
     try {
       await client.getChainTip();
       break;
-    } catch {
-      if (attempt >= 60)
-        throw new Error(`Local runtime did not become ready: ${nodeLog}`);
+    } catch (error) {
+      if (hosted || attempt >= 60)
+        throw new Error(
+          `${hosted ? "Hosted devnet is incompatible or unavailable" : "Local runtime did not become ready"}: ${error instanceof Error ? error.message : error}. ${nodeLog}`,
+        );
       await delay(500);
     }
   }
-  assert.equal(
-    toHex0x((await client.getNetworkInfo()).networkHash),
-    `0x${"0".repeat(64)}`,
-  );
+  if (!hosted)
+    assert.equal(
+      toHex0x((await client.getNetworkInfo()).networkHash),
+      `0x${"0".repeat(64)}`,
+    );
   await new Promise((accept) => site.listen(0, "127.0.0.1", accept));
   context = await chromium.launchPersistentContext(join(directory, "browser"), {
     executablePath: process.env.CHROMIUM_PATH || "/usr/bin/chromium",
@@ -122,7 +140,7 @@ try {
       },
       { action, input },
     );
-  await callWallet("network", { network: "localnet" });
+  await callWallet("network", { network: hosted ? "devnet" : "localnet" });
   await wallet.goto(`chrome-extension://${extensionId}/index.html#/thruput`);
   try {
     await wallet
@@ -138,6 +156,10 @@ try {
     throw error;
   }
   const state = await callWallet("state");
+  assert.equal(
+    state.networkHash,
+    toHex0x((await client.getNetworkInfo()).networkHash).slice(2),
+  );
   const account = state.accounts[0];
   assert.ok(account.address);
   const backup = () =>
@@ -236,10 +258,19 @@ try {
       async (request) => window.walletProvider.request(request),
       request,
     );
+  await wallet.evaluate(async () =>
+    chrome.runtime.sendMessage({ type: "SIGN_OUT" }),
+  );
   const connectionPage = context.waitForEvent("page");
   const connecting = invoke({ method: "connect" });
   void connecting.catch(() => {});
   const connectPopup = await connectionPage;
+  await connectPopup
+    .locator('input[type="password"]')
+    .fill("disposable-fixture-password");
+  await connectPopup
+    .getByRole("button", { name: "Unlock", exact: true })
+    .click();
   await connectPopup
     .getByRole("button", { name: "Connect", exact: true })
     .click();
@@ -268,6 +299,45 @@ try {
         nonce: 0n,
       },
     },
+  };
+  const approveAndSubmit = async (transaction, expectSuccess = true) => {
+    const unsigned = toHex0x(serializeTransaction(transaction));
+    const opened = context.waitForEvent("page");
+    const pending = invoke({
+      method: "signTransaction",
+      params: {
+        account: account.address,
+        networkHash: state.networkHash,
+        transaction: unsigned,
+      },
+    });
+    void pending.catch(() => {});
+    const popup = await opened;
+    await popup
+      .getByRole("button", { name: "Approve signature", exact: true })
+      .click();
+    const signed = await pending;
+    await verifySignTransactionResult(
+      signed,
+      unsigned,
+      connected.accounts[0],
+      state.networkHash,
+    );
+    const result = await invoke({
+      method: "submitTransaction",
+      params: {
+        account: account.address,
+        networkHash: state.networkHash,
+        signedTransaction: signed.signedTransaction,
+      },
+    });
+    assert.equal(result.hash, signed.hash);
+    const receipt = await client.waitForTransactionReceipt(
+      hashFromHex(result.hash),
+      { timeoutMs: 30000 },
+    );
+    assert.equal(receipt.execResult === ExecResult.ExecResultOK, expectSuccess);
+    return receipt;
   };
   const transaction = await prepareTransaction(client, publicAccount, {
     invocation: defaultWalletAdapter.createRootInvocation(
@@ -355,6 +425,110 @@ try {
     { timeoutMs: 30000 },
   );
   assert.equal(receipt.execResult, ExecResult.ExecResultOK);
+  if (process.env.THRUPUT_COUNTER_ARTIFACT) {
+    const deployment = prepareContractDeployment({
+      deployer: publicAccount.address,
+      contract: new Uint8Array(
+        await readFile(process.env.THRUPUT_COUNTER_ARTIFACT),
+      ),
+    });
+    const codecs = createContractCodecContext([]);
+    const method = (name, args = [], result = ContractTypeKind.Void) =>
+      defineContractMethod({
+        interfaceName: "Counter",
+        interfaceVersion: "0.1.0",
+        abiName: name,
+        publicName: name,
+        entrypoint: deriveEntrypointID("Counter", "0.1.0", name),
+        args: args.map((name) => ({
+          abiName: name,
+          publicName: name,
+          type: { v: ContractTypeKind.U64 },
+        })),
+        returnType: { v: result },
+        throws: [],
+        codecs,
+      });
+    const initialize = method("initialize", ["initial_value"]);
+    const increment = method("increment", ["amount"]);
+    const get = method("get", [], ContractTypeKind.U64);
+    const error = method("error", [], ContractTypeKind.U64);
+    const readCommittedCounter = async (receipt) => {
+      const deadline = Date.now() + 30000;
+      // Receipt indexing may lead the independently refreshed view snapshot.
+      for (;;) {
+        const view = await get.view({ client, contract: deployment.address });
+        if (view.height >= receipt.height) return view.value;
+        assert.ok(
+          Date.now() < deadline,
+          "view snapshot did not reach receipt height",
+        );
+        await delay(100);
+      }
+    };
+    const deployed = await approveAndSubmit(
+      await prepareTransaction(client, publicAccount, {
+        invocation: defaultWalletAdapter.createDeploymentInvocation(
+          publicAccount.address,
+          deployment,
+          {
+            gasLimit: gasAmount(2_000_000n),
+            amount: 10_000_000n,
+            initializer: initialize.invocation(
+              deployment.address,
+              gasAmount(500_000n),
+              { initial_value: 10n },
+            ),
+          },
+        ),
+        contractsToDeploy: [deployment.contract],
+      }),
+    );
+    assert.equal(
+      toHex0x(DefaultWallet.v0_1.deploy.decodeReceipt(deployed).value),
+      toHex0x(deployment.address),
+    );
+    assert.equal(await readCommittedCounter(deployed), 10n);
+    const batch = async (calls, success) =>
+      approveAndSubmit(
+        await prepareTransaction(client, publicAccount, {
+          invocation: defaultWalletAdapter.createBatchRootInvocation(
+            publicAccount.address,
+            { gasLimit: gasAmount(2_000_000n), invocations: calls },
+          ),
+        }),
+        success,
+      );
+    const incremented = await batch(
+      [
+        increment.invocation(deployment.address, gasAmount(500_000n), {
+          amount: 2n,
+        }),
+        increment.invocation(deployment.address, gasAmount(500_000n), {
+          amount: 3n,
+        }),
+      ],
+      true,
+    );
+    assert.equal(await readCommittedCounter(incremented), 15n);
+    const aborted = await batch(
+      [
+        increment.invocation(deployment.address, gasAmount(500_000n), {
+          amount: 100n,
+        }),
+        error.invocation(deployment.address, gasAmount(500_000n)),
+      ],
+      false,
+    );
+    assert.equal(
+      await readCommittedCounter(aborted),
+      15n,
+      "a later abort rolls back earlier batch calls",
+    );
+    console.log(
+      "PASS: counter deployment with initialization, atomic two-call execution, and abort rollback",
+    );
+  }
   await assert.rejects(
     invoke({
       method: "submitTransaction",
@@ -372,16 +546,18 @@ try {
   await invoke({ method: "disconnect" });
   assert.equal((await invoke({ method: "getSession" })).accounts.length, 0);
   console.log(
-    `PASS: isolated Chrome/localnet account, prototype recovery, funding, provider, signature verification, submission, receipt, single-use approval, popup recovery and disconnect${process.env.REQUIRE_THRUPUT_SIMULATION === "1" ? ", authorized simulation" : ""}`,
+    `PASS: isolated Chrome/${hosted ? "devnet" : "localnet"} account, prototype recovery, funding, provider, signature verification, submission, receipt, single-use approval, popup recovery and disconnect${process.env.REQUIRE_THRUPUT_SIMULATION === "1" ? ", authorized simulation" : ""}`,
   );
 } finally {
   await context?.close();
   await new Promise((accept) => site.close(accept));
-  node.kill("SIGINT");
-  await Promise.race([
-    new Promise((accept) => node.once("exit", accept)),
-    delay(10000),
-  ]);
-  if (node.exitCode === null) node.kill("SIGKILL");
+  if (node) {
+    node.kill("SIGINT");
+    await Promise.race([
+      new Promise((accept) => node.once("exit", accept)),
+      delay(10000),
+    ]);
+    if (node.exitCode === null) node.kill("SIGKILL");
+  }
   await rm(directory, { recursive: true, force: true });
 }

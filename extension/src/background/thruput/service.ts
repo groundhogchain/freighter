@@ -15,9 +15,9 @@ import {
   WalletProviderError,
   type ProviderRequest,
   type WalletSession,
+  type WalletProviderErrorCode,
 } from "@groundhogchain/client/provider";
 import { ExecResult } from "@groundhogchain/protocol";
-import { groundhog_erc20_if } from "@groundhogchain/client/contracts";
 import { requestAirdrop } from "@groundhogchain/client/actions";
 
 import {
@@ -32,7 +32,10 @@ import {
   ThruputNetwork,
   thruputScope,
 } from "thruput/networks";
-import { inspectThruputTransaction } from "thruput/transactions";
+import {
+  inspectThruputTransaction,
+  describeThruputAmounts,
+} from "thruput/transactions";
 import {
   ThruputUiAction,
   ThruputOutcome,
@@ -43,7 +46,12 @@ import {
 } from "thruput/types";
 import { getThruputVault, signThruputTransaction } from "./vault";
 import { importThruputAccount } from "./importAccount";
-import { connectThruput, simulateThruput } from "./network";
+import { loadThruputHistory, parseHistoryCursors } from "./history";
+import {
+  connectThruput,
+  simulateThruput,
+  requireThruputCompatibility,
+} from "./network";
 import { THRUPUT_STORAGE_KEY, ThruputStore } from "./storage";
 import {
   requestRecord,
@@ -105,6 +113,18 @@ let previousSessionKey = "";
 let previousNetwork = "";
 let ready: Promise<void> | undefined;
 let publication = Promise.resolve();
+let retirement: Promise<unknown> = Promise.resolve();
+let activeExternalRequests = 0;
+const incomingRequests = new Map<
+  string,
+  { origin: string; canceled: boolean }
+>();
+const incomingKey = (sender: ThruputSender, id: string) =>
+  JSON.stringify([sender.documentId, id]);
+const assertRequestOpen = (sender: ThruputSender, id: string) => {
+  if (incomingRequests.get(incomingKey(sender, id))?.canceled)
+    throw new WalletProviderError(4001, "Wallet request canceled");
+};
 
 const initialize = () => {
   if (!ready)
@@ -122,14 +142,18 @@ const initialize = () => {
   return ready;
 };
 
-const cancel = (item: Pending, message = "Wallet request canceled") => {
+const cancel = (
+  item: Pending,
+  message = "Wallet request canceled",
+  code: WalletProviderErrorCode = 4001,
+) => {
   if (!pending.delete(item.id)) return;
   if (item.granting) {
     grants.delete(item.origin);
     void publish().catch(() => {});
   }
   clearTimeout(item.timer);
-  item.reject(new WalletProviderError(4001, message));
+  item.reject(new WalletProviderError(code, message));
   if (item.window !== undefined)
     void browser.windows.remove(item.window).catch(() => {});
 };
@@ -143,10 +167,17 @@ const invalidate = (preserveConnect = false) => {
       item.epoch = epoch;
     else cancel(item);
   }
+  // Retire durable permissions as well as their in-memory eligibility. Otherwise
+  // stale approvals could exhaust quota after lock/unlock in the same worker.
+  retirement = store.update((next) => {
+    next.approvals = [];
+  });
+  void retirement.catch(() => {});
 };
 
 const snapshot = async () => {
   await initialize();
+  await retirement;
   const [vault, data] = await Promise.all([getThruputVault(), store.read()]);
   const marker = JSON.stringify([
     vault.sessionKey,
@@ -154,11 +185,14 @@ const snapshot = async () => {
     vault.accounts,
     data.network,
     data.networkHash,
+    data.selectedAccounts?.[data.networkHash],
   ]);
   if (marker !== sessionMarker) {
     const network = JSON.stringify([data.network, data.networkHash]);
-    const unlocking =
-      !previousSessionKey && !!vault.sessionKey && network === previousNetwork;
+    // Unlock hydrates public account metadata before publishing the session key.
+    // Keep connect requests through those locked intermediate states; never keep
+    // signatures, or a request crossing an actual unlocked -> locked transition.
+    const unlocking = !previousSessionKey && network === previousNetwork;
     sessionMarker = marker;
     previousSessionKey = vault.sessionKey;
     previousNetwork = network;
@@ -245,6 +279,7 @@ const queueApproval = async (
   sender: ThruputSender,
 ) => {
   const value = await snapshot();
+  if (origin !== ownOrigin()) assertRequestOpen(sender, requestId);
   if (!value.vault.accounts.length && request.method !== "connect")
     throw new WalletProviderError(4100, "Unlock a software account first");
   if (
@@ -307,7 +342,15 @@ const queueApproval = async (
         item.tab = (await browser.tabs.query({ windowId: popup.id }))[0]?.id;
       if (item.tab === undefined)
         throw new Error("Could not identify wallet approval");
-    })().catch(() => cancel(item, "Could not prepare wallet approval"));
+    })().catch((error: unknown) =>
+      cancel(
+        item,
+        error instanceof Error
+          ? error.message.slice(0, 1024)
+          : "Could not prepare wallet approval",
+        error instanceof WalletProviderError ? error.code : 4900,
+      ),
+    );
   });
 };
 
@@ -335,10 +378,18 @@ const reviewApproval = async (
     ...(item.request.method === "signTransaction"
       ? {
           account: item.request.params.account,
-          transaction: inspectThruputTransaction(
-            item.request.params.transaction,
-            accountFor(value, item.request.params.account),
-          ).review,
+          transaction: describeThruputAmounts(
+            inspectThruputTransaction(
+              item.request.params.transaction,
+              accountFor(value, item.request.params.account),
+            ).review,
+            [
+              HOG_TOKEN,
+              ...(value.data.tokens[value.data.networkHash] || []).filter(
+                (token) => token.address !== HOG_TOKEN.address,
+              ),
+            ],
+          ),
         }
       : {}),
   };
@@ -533,6 +584,7 @@ const provider = async (
   const origin = requireThruputOrigin(sender);
   const request = parseProviderRequest(raw);
   const value = await snapshot();
+  assertRequestOpen(sender, requestId);
   if (documents.size >= 256 && !documents.has(sender.documentId!)) {
     throw new WalletProviderError(-32002, "Too many connected documents");
   }
@@ -564,6 +616,8 @@ const provider = async (
 };
 
 const revoke = async (origin: string) => {
+  for (const request of incomingRequests.values())
+    if (request.origin === origin) request.canceled = true;
   grants.delete(origin);
   for (const item of pending.values()) if (item.origin === origin) cancel(item);
   for (const scope of eligible.keys())
@@ -591,6 +645,7 @@ const ui = async (
         sites: [...grants.keys()],
         outgoing: value.vault.sessionKey ? data.outgoing : [],
         locked: !value.vault.sessionKey,
+        selectedAccount: data.selectedAccounts?.[data.networkHash],
       } satisfies ThruputState;
     case ThruputUiAction.APPROVAL:
       return reviewApproval(requestText(message.id), sender);
@@ -611,6 +666,18 @@ const ui = async (
   }
   if (!value.vault.sessionKey)
     throw new WalletProviderError(4100, "Unlock the wallet first");
+  if (message.action === ThruputUiAction.SELECT_ACCOUNT) {
+    const address = parseWalletHex32(message.account);
+    accountFor(value, address);
+    invalidate();
+    await store.update((next) => {
+      next.selectedAccounts ||= {};
+      next.selectedAccounts[data.networkHash] = address;
+      next.approvals = [];
+    });
+    await publish();
+    return null;
+  }
   if (message.action === ThruputUiAction.IMPORT) {
     const password = requestText(message.password);
     const input =
@@ -646,6 +713,7 @@ const ui = async (
         timeoutMs: 15000,
       }),
     });
+    await requireThruputCompatibility(client);
     const identity = await client.getNetworkInfo();
     await assertCurrent(value.epoch);
     const networkHash = toHex0x(identity.networkHash).slice(2);
@@ -849,39 +917,16 @@ const ui = async (
       );
     }
     case ThruputUiAction.HISTORY: {
-      const history = await client.getTransactionsByAddress({
-        address: addressFromHex(account.address),
-        anchor: "end",
-        order: "descending",
-        limit: 20,
-      });
-      const event = groundhog_erc20_if.v0_1.events.TransferEvent;
-      const incoming = await Promise.all(
-        tokens.map(async (token) => {
-          try {
-            const page = await client.getContractEvents({
-              event,
-              contractAddresses: [addressFromHex(token.address)],
-              topics: { to: addressFromHex(account.address) },
-              anchor: "end",
-              order: "descending",
-              limit: 20,
-            });
-            return { token, events: page.events };
-          } catch {
-            return { token, events: [], unavailable: true };
-          }
-        }),
+      if (message.networkHash !== data.networkHash)
+        throw new WalletProviderError(4901, "History network changed");
+      const result = await loadThruputHistory(
+        client,
+        account.address,
+        tokens,
+        parseHistoryCursors(message.cursors),
       );
-      return JSON.parse(
-        JSON.stringify({ history, incoming }, (_, entry: unknown) =>
-          typeof entry === "bigint"
-            ? entry.toString()
-            : entry instanceof Uint8Array
-              ? toHex0x(entry)
-              : entry,
-        ),
-      );
+      await assertCurrent(value.epoch);
+      return result;
     }
     default:
       throw new WalletProviderError(4200, "Unsupported wallet action");
@@ -892,8 +937,16 @@ export const handleThruputMessage = async (
   input: unknown,
   sender: ThruputSender,
 ) => {
+  let counted = false;
+  let incomingId: string | undefined;
   try {
     const message = requestRecord(input);
+    if (message.type === EXTERNAL_SERVICE_TYPES.THRUPUT_PROVIDER) {
+      if (activeExternalRequests >= 64)
+        throw new WalletProviderError(-32002, "Too many wallet requests");
+      activeExternalRequests++;
+      counted = true;
+    }
     if (message.type === SERVICE_TYPES.THRUPUT_UI)
       return { result: await ui(message, sender) };
     const origin = requireThruputOrigin(sender);
@@ -901,6 +954,8 @@ export const handleThruputMessage = async (
     if (!/^[a-f0-9-]{36}$/.test(id))
       throw new WalletProviderError(-32602, "Invalid request ID");
     if (message.type === EXTERNAL_SERVICE_TYPES.THRUPUT_CANCEL) {
+      const incoming = incomingRequests.get(incomingKey(sender, id));
+      if (incoming) incoming.canceled = true;
       for (const item of pending.values())
         if (
           item.origin === origin &&
@@ -910,6 +965,11 @@ export const handleThruputMessage = async (
           cancel(item);
       return { result: null };
     }
+    const key = incomingKey(sender, id);
+    if (incomingRequests.has(key))
+      throw new WalletProviderError(-32002, "Duplicate wallet request");
+    incomingId = key;
+    incomingRequests.set(key, { origin, canceled: false });
     return { result: await provider(message.request, id, sender) };
   } catch (error) {
     return {
@@ -921,6 +981,9 @@ export const handleThruputMessage = async (
             : "Wallet request failed",
       },
     };
+  } finally {
+    if (counted) activeExternalRequests--;
+    if (incomingId) incomingRequests.delete(incomingId);
   }
 };
 

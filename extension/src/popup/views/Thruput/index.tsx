@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { View } from "popup/basics/layout/View";
 import { ROUTES } from "popup/constants/routes";
 import { navigateTo } from "popup/helpers/navigate";
+import { thruputRequest } from "popup/helpers/thruput";
+import { ThruputUiAction } from "thruput/types";
 import { useThruputState } from "./useThruputState";
 import { Approval } from "./Approval";
 import { Dashboard } from "./Dashboard";
@@ -15,7 +17,8 @@ export const Thruput = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { state, error, refresh } = useThruputState();
-  const [selected, setSelected] = useState("");
+  const [selecting, setSelecting] = useState(false);
+  const [selectionError, setSelectionError] = useState(false);
   const approval = new URLSearchParams(location.search).get("approval");
   if (state?.locked)
     return (
@@ -26,7 +29,7 @@ export const Thruput = () => {
       />
     );
   const account =
-    state?.accounts.find((item) => item.address === selected) ||
+    state?.accounts.find((item) => item.address === state.selectedAccount) ||
     state?.accounts[0];
   return (
     <>
@@ -51,7 +54,21 @@ export const Thruput = () => {
                 id="thruput-account"
                 name="account"
                 value={account.address}
-                onChange={(event) => setSelected(event.target.value)}
+                disabled={selecting}
+                onChange={async (event) => {
+                  setSelecting(true);
+                  setSelectionError(false);
+                  try {
+                    await thruputRequest(ThruputUiAction.SELECT_ACCOUNT, {
+                      account: event.target.value,
+                    });
+                    await refresh();
+                  } catch {
+                    setSelectionError(true);
+                  } finally {
+                    setSelecting(false);
+                  }
+                }}
               >
                 {state.accounts.map((item) => (
                   <option key={item.address} value={item.address}>
@@ -59,6 +76,9 @@ export const Thruput = () => {
                   </option>
                 ))}
               </select>
+              {selectionError ? (
+                <p role="alert">{t("Account selection failed. Try again.")}</p>
+              ) : null}
             </div>
             <Dashboard
               key={`${state.networkHash}:${account.address}`}

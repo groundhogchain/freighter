@@ -11,6 +11,7 @@ import { DefaultWallet, ERC20 } from "@groundhogchain/client/contracts";
 import {
   blockHeight,
   contractAddress,
+  contractEntrypointID,
   gasAmount,
 } from "@groundhogchain/protocol";
 import { thruputAccount } from "../accounts";
@@ -40,6 +41,60 @@ const build = (
   });
 
 describe("Thruput transaction review", () => {
+  it("rejects a changed auth nonce and an unknown wallet entrypoint", () => {
+    const transaction = build();
+    transaction.auth_claim = {
+      ...account.authClaim,
+      pubkey_preimage: { ...account.authClaim.pubkey_preimage, nonce: 1n },
+    };
+    expect(() =>
+      inspectThruputTransaction(
+        toHex0x(serializeTransaction(transaction)),
+        wireAccount,
+      ),
+    ).toThrow();
+    const unknown = build();
+    unknown.invocation.entrypoint = contractEntrypointID(
+      new Uint8Array(8).fill(255),
+    );
+    expect(() =>
+      inspectThruputTransaction(
+        toHex0x(serializeTransaction(unknown)),
+        wireAccount,
+      ),
+    ).toThrow("Unsupported Thruput wallet entrypoint");
+  });
+
+  it("reserves the signature wrapper budget and rejects oversized batches", () => {
+    expect(() =>
+      inspectThruputTransaction(`0x${"00".repeat(1_048_501)}`, wireAccount),
+    ).toThrow();
+    const inner = ERC20.v0_1.transfer.invocation(
+      recipient,
+      gasAmount(500_000n),
+      { receiver: recipient, amount: 1n },
+    );
+    const transaction = build(
+      DefaultWallet.v0_1.execute.invocation(
+        account.address,
+        gasAmount(1_000_000n),
+        {
+          calls: Array.from({ length: 17 }, () => ({
+            target: recipient,
+            entrypoint: inner.entrypoint,
+            gas_limit: inner.gas_limit,
+            calldata: inner.calldata,
+          })),
+        },
+      ),
+    );
+    expect(() =>
+      inspectThruputTransaction(
+        toHex0x(serializeTransaction(transaction)),
+        wireAccount,
+      ),
+    ).toThrow("Expected 1 to 16 wallet calls");
+  });
   it("decodes a wallet transfer without confusing its root and target", () => {
     const bytes = toHex0x(serializeTransaction(build()));
     const { review, transaction } = inspectThruputTransaction(

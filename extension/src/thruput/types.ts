@@ -30,6 +30,34 @@ export interface ThruputState extends ThruputNetworkSelection {
   sites: string[];
   outgoing: ThruputOutgoing[];
   locked: boolean;
+  selectedAccount?: string;
+}
+
+export enum ThruputHistoryKind {
+  TRANSACTION = "transaction",
+  RECEIVED = "received",
+}
+
+export interface ThruputHistoryRow {
+  id: string;
+  kind: ThruputHistoryKind;
+  hash: string;
+  height: string;
+  token?: ThruputToken;
+  rawAmount?: string;
+}
+
+export interface ThruputHistoryCursors {
+  transactions?: string | null;
+  tokens: Record<string, string | null | undefined>;
+}
+
+export interface ThruputHistoryPage {
+  rows: ThruputHistoryRow[];
+  cursors: ThruputHistoryCursors;
+  hasMore: boolean;
+  unavailable: string[];
+  coverage: { source: string; oldestBlock: string; latestBlock: string }[];
 }
 
 export interface ThruputBalance extends ThruputToken {
@@ -47,6 +75,7 @@ export interface ThruputPendingReview {
 }
 
 export enum ThruputUiAction {
+  SELECT_ACCOUNT = "selectAccount",
   IMPORT = "import",
   STATE = "state",
   NETWORK = "network",

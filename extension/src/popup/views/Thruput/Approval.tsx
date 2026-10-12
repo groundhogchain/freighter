@@ -70,7 +70,7 @@ export const Approval = ({ id }: { id: string }) => {
       </h1>
       {error ? (
         <p role="alert" className="Thruput__notice">
-          {error}
+          {t(error)}
         </p>
       ) : null}
       {review ? (

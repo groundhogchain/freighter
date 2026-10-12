@@ -142,16 +142,12 @@ export const HomeHeader = ({
                 type="button"
                 className="ThruputHome__action"
                 disabled
-                aria-describedby="thruput-swap-unavailable"
               >
                 <AccountAction icon={<Icon.RefreshCw02 />} label={t("Swap")} />
               </button>
             </>
           }
         />
-        <div className="ThruputHome__hint" id="thruput-swap-unavailable">
-          {t("Swaps are not available on Thruput yet.")}
-        </div>
         <nav className="ThruputHome__tabs" aria-label={t("Account sections")}>
           <button
             type="button"

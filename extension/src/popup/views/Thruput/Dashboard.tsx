@@ -137,6 +137,7 @@ export const Dashboard = ({
         token: form.get("token"),
       });
       await updateBalances();
+      if (live.current) setPanel(ThruputPanel.TOKENS);
     });
   };
   const outcome = {
@@ -252,7 +253,7 @@ export const Dashboard = ({
               </details>
             </>
           ) : null}
-          {panel === ThruputPanel.ADD ? (
+          {panel === ThruputPanel.RECEIVE ? (
             <p className="Thruput__muted">
               {t("Experimental network. Test tokens have no monetary value.")}
             </p>
@@ -267,7 +268,7 @@ export const Dashboard = ({
               {notice}
             </p>
           ) : null}
-          {panel === ThruputPanel.ADD ? (
+          {panel === ThruputPanel.RECEIVE ? (
             <section>
               <h1>{t("Receive")}</h1>
               <CopyText textToCopy={account.address} doneLabel={t("Copied!")}>
@@ -393,43 +394,41 @@ export const Dashboard = ({
                 type="button"
                 size="sm"
                 variant="secondary"
-                onClick={() => setPanel(ThruputPanel.ADD)}
+                onClick={() => setPanel(ThruputPanel.ADD_TOKEN)}
               >
                 {t("Add token")}
               </Button>
             </section>
           ) : null}
-          {panel === ThruputPanel.ADD ? (
+          {panel === ThruputPanel.ADD_TOKEN ? (
             <section>
-              <details>
-                <summary>{t("Track a token")}</summary>
-                <form onSubmit={addToken}>
-                  <label htmlFor="thruput-token-address">
-                    {t("Token contract address")}
-                  </label>
-                  <input
-                    id="thruput-token-address"
-                    name="token"
-                    required
-                    autoComplete="off"
-                    spellCheck={false}
-                    placeholder="0x…"
-                  />
-                  <p className="Thruput__muted">
-                    {t(
-                      "Token names and symbols are supplied by the contract and are not verified.",
-                    )}
-                  </p>
-                  <Button
-                    type="submit"
-                    size="sm"
-                    variant="secondary"
-                    disabled={busy}
-                  >
-                    {t("Add token")}
-                  </Button>
-                </form>
-              </details>
+              <form onSubmit={addToken}>
+                <label htmlFor="thruput-token-address">
+                  {t("Token contract address")}
+                </label>
+                <input
+                  id="thruput-token-address"
+                  name="token"
+                  required
+                  disabled={busy}
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder="0x…"
+                />
+                <p className="Thruput__muted">
+                  {t(
+                    "Token names and symbols are supplied by the contract and are not verified.",
+                  )}
+                </p>
+                <Button
+                  type="submit"
+                  size="sm"
+                  variant="secondary"
+                  disabled={busy}
+                >
+                  {t("Add token")}
+                </Button>
+              </form>
             </section>
           ) : null}
           {panel === ThruputPanel.SEND ? (

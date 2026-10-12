@@ -35,13 +35,16 @@ import {
 
 // Disposable browser profile and test funds only. Never use a user's wallet.
 const hosted = process.argv.includes("--devnet");
+const existingLocalnet = process.argv.includes("--existing-localnet");
+if (hosted && existingLocalnet)
+  throw new Error("Choose devnet or existing localnet, not both");
 const cli = process.env.THRUPUT_CLI;
-if (!hosted && (!cli || !cli.startsWith("/")))
+if (!hosted && !existingLocalnet && (!cli || !cli.startsWith("/")))
   throw new Error("Set THRUPUT_CLI to the absolute path of a compatible CLI");
 const extension = resolve("extension/build");
 const directory = await mkdtemp(join(tmpdir(), "freighter-thruput-"));
 let node;
-if (!hosted) {
+if (!hosted && !existingLocalnet) {
   const probe = createServer();
   await new Promise((accept, reject) => {
     probe.once("error", reject);
@@ -87,7 +90,7 @@ try {
       await client.getChainTip();
       break;
     } catch (error) {
-      if (hosted || attempt >= 60)
+      if (hosted || existingLocalnet || attempt >= 60)
         throw new Error(
           `${hosted ? "Hosted devnet is incompatible or unavailable" : "Local runtime did not become ready"}: ${error instanceof Error ? error.message : error}. ${nodeLog}`,
         );
@@ -204,6 +207,9 @@ try {
     await wallet.getByLabel("Chain", { exact: true }).inputValue(),
     "thruput",
   );
+  await wallet
+    .getByRole("button", { name: "View options", exact: true })
+    .click();
   await wallet.getByRole("button", { name: "Settings", exact: true }).click();
   await wallet
     .getByText("Import a Thruput prototype account", { exact: true })
@@ -269,6 +275,26 @@ try {
     "home balance has no token suffix",
   );
   await wallet.getByText("Thruput tokens", { exact: true }).waitFor();
+  await wallet.getByRole("button", { name: "Add token", exact: true }).click();
+  await wallet.getByLabel("Token contract address", { exact: true }).waitFor();
+  assert.equal(await wallet.getByTestId("thruput-receive-qr").count(), 0);
+  assert.equal(
+    await wallet.getByText(account.address, { exact: true }).count(),
+    0,
+  );
+  await wallet.getByRole("button", { name: "Back", exact: true }).click();
+  await wallet
+    .getByRole("button", { name: "View options", exact: true })
+    .click();
+  await wallet
+    .getByRole("button", { name: "Account details", exact: true })
+    .click();
+  await wallet.getByTestId("thruput-receive-qr").waitFor();
+  assert.equal(
+    await wallet.getByLabel("Token contract address", { exact: true }).count(),
+    0,
+  );
+  await wallet.getByRole("button", { name: "Back", exact: true }).click();
   await wallet.getByRole("button", { name: "Add", exact: true }).click();
   await wallet.getByRole("heading", { name: "Receive", exact: true }).waitFor();
   assert.equal(
@@ -329,6 +355,29 @@ try {
         path: join(process.env.WALLET_SCREENSHOT_DIR, `wallet-${width}.png`),
         fullPage: true,
       });
+      await wallet
+        .getByRole("button", { name: "View options", exact: true })
+        .click();
+      await wallet
+        .getByRole("dialog", { name: "View options", exact: true })
+        .waitFor();
+      await wallet.screenshot({
+        path: join(process.env.WALLET_SCREENSHOT_DIR, `options-${width}.png`),
+        fullPage: true,
+      });
+      await wallet.keyboard.press("Escape");
+      assert.equal(
+        await wallet
+          .getByRole("dialog", { name: "View options", exact: true })
+          .count(),
+        0,
+      );
+      assert.equal(
+        await wallet
+          .getByRole("button", { name: "View options", exact: true })
+          .evaluate((element) => element === document.activeElement),
+        true,
+      );
     }
   }
   await wallet.evaluate(() => localStorage.setItem("i18nextLng", "pt"));
@@ -362,9 +411,13 @@ try {
       async (request) => window.walletProvider.request(request),
       request,
     );
-  await wallet.evaluate(async () =>
-    chrome.runtime.sendMessage({ type: "SIGN_OUT" }),
-  );
+  await wallet
+    .getByRole("button", { name: "View options", exact: true })
+    .click();
+  await wallet
+    .getByRole("button", { name: "Lock Freighter", exact: true })
+    .click();
+  await wallet.getByRole("button", { name: "Unlock", exact: true }).waitFor();
   const connectionPage = context.waitForEvent("page");
   const connecting = invoke({ method: "connect" });
   void connecting.catch(() => {});

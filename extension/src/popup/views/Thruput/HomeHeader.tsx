@@ -11,10 +11,12 @@ import { IdenticonImg } from "popup/components/identicons/IdenticonImg";
 import type { ThruputAccount } from "thruput/accounts";
 import { ThruputNetwork } from "thruput/networks";
 import type { ThruputState } from "thruput/types";
+import { OptionsMenu } from "./OptionsMenu";
 
 export enum ThruputPanel {
   TOKENS = "tokens",
-  ADD = "add",
+  RECEIVE = "receive",
+  ADD_TOKEN = "addToken",
   SEND = "send",
   ACTIVITY = "activity",
   SETTINGS = "settings",
@@ -40,7 +42,8 @@ export const HomeHeader = ({
   const { t } = useTranslation();
   const titles = {
     [ThruputPanel.TOKENS]: t("Tokens"),
-    [ThruputPanel.ADD]: t("Add"),
+    [ThruputPanel.RECEIVE]: t("Account details"),
+    [ThruputPanel.ADD_TOKEN]: t("Add token"),
     [ThruputPanel.SEND]: t("Send"),
     [ThruputPanel.ACTIVITY]: t("Recent activity"),
     [ThruputPanel.SETTINGS]: t("Settings"),
@@ -64,11 +67,10 @@ export const HomeHeader = ({
       isAccountHeader
       leftContent={
         <div className="AccountHeader__icon-btn__left">
-          <NavButton
-            showBorder
-            title={t("Settings")}
-            icon={<Icon.DotsHorizontal />}
-            onClick={() => onPanel(ThruputPanel.SETTINGS)}
+          <OptionsMenu
+            address={account.address}
+            onAccountDetails={() => onPanel(ThruputPanel.RECEIVE)}
+            onSettings={() => onPanel(ThruputPanel.SETTINGS)}
           />
           <NavButton
             showBorder
@@ -125,7 +127,7 @@ export const HomeHeader = ({
               <button
                 type="button"
                 className="ThruputHome__action"
-                onClick={() => onPanel(ThruputPanel.ADD)}
+                onClick={() => onPanel(ThruputPanel.RECEIVE)}
               >
                 <AccountAction icon={<Icon.Plus />} label={t("Add")} />
               </button>

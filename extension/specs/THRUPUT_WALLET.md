@@ -78,8 +78,11 @@ home when needed. The two homes share the account summary and action-tile
 components. On Thruput, the main balance is a native-token quantity without a
 ticker suffix, not a fiat total. The asset is labeled **Thruput tokens**.
 Swap is disabled. **Request test tokens** is on the home screen above **Add token**.
-It uses `requestAirdrop` on both devnet and localnet. **Add** opens receive and token tracking;
+It uses `requestAirdrop` on both devnet and localnet. **Add** opens Receive;
+**Add token** opens only the custom-token form.
 **Send** opens the Thruput transfer form; **History** opens activity and recovery.
+The options dropdown provides **Copy address**, **Account details** (Receive),
+**Settings**, locking, supported sidebar mode, fullscreen mode, and feedback.
 The network label opens settings, including network selection and prototype
 import. The Stellar home still requires working Freighter backend URLs.
 
@@ -133,6 +136,10 @@ approves and verifies a signature, submits, checks a committed receipt, rejects
 repeat submission, and verifies recovery after reopening the wallet. It also
 checks narrow/wide layout overflow and Portuguese rendering. No existing browser
 profile or wallet is accessed. Set `CHROMIUM_PATH` to override `/usr/bin/chromium`.
+
+Pass `--existing-localnet` to reuse a running compatible node on port 9545.
+This mode still creates a disposable browser wallet and requests test funds,
+but does not start, stop, or reset the node.
 
 Set `THRUPUT_QR_DECODER` to an absolute `zbarimg` path to decode a screenshot of
 the rendered receive QR and compare it with the selected account address.

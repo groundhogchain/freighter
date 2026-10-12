@@ -1,6 +1,10 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { Provider } from "react-redux";
+import { configureStore } from "@reduxjs/toolkit";
+import { reducer as auth } from "popup/ducks/accountServices";
+import * as ApiInternal from "@shared/api/internal";
 import { APPLICATION_STATE } from "@shared/constants/applicationState";
 import { HOG_TOKEN, ThruputNetwork } from "thruput/networks";
 import { ThruputUiAction, type ThruputState } from "thruput/types";
@@ -40,18 +44,20 @@ const mockState = jest.mocked(useThruputState);
 const request = jest.mocked(thruputRequest);
 const mount = () =>
   render(
-    <MemoryRouter>
-      <View>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path={ROUTES.welcome} element={<div>Onboarding</div>} />
-          <Route
-            path={ROUTES.unlockAccount}
-            element={<div>Unlock wallet</div>}
-          />
-        </Routes>
-      </View>
-    </MemoryRouter>,
+    <Provider store={configureStore({ reducer: { auth } })}>
+      <MemoryRouter>
+        <View>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path={ROUTES.welcome} element={<div>Onboarding</div>} />
+            <Route
+              path={ROUTES.unlockAccount}
+              element={<div>Unlock wallet</div>}
+            />
+          </Routes>
+        </View>
+      </MemoryRouter>
+    </Provider>,
   );
 
 beforeEach(() => {
@@ -110,10 +116,91 @@ describe("Thruput default home", () => {
       screen.queryByText(account.stellarPublicKey),
     ).not.toBeInTheDocument();
     expect(screen.queryByText("Stellar signing key")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Token contract address"),
+    ).not.toBeInTheDocument();
     expect(request).not.toHaveBeenCalledWith(
       ThruputUiAction.AIRDROP,
       expect.anything(),
     );
+  });
+
+  it("keeps Add token focused on the custom-token form", async () => {
+    mount();
+    fireEvent.click(await screen.findByRole("button", { name: "Add token" }));
+    expect(
+      screen.queryByRole("img", { name: "Thruput address QR code" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(account.address)).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Token contract address")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Add token" })).toHaveAttribute(
+      "type",
+      "submit",
+    );
+    expect(request).not.toHaveBeenCalledWith(
+      ThruputUiAction.ADD_TOKEN,
+      expect.anything(),
+    );
+  });
+
+  it("opens account details and settings through the options dropdown", async () => {
+    mount();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "View options" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Account details" }),
+    );
+    expect(
+      await screen.findByRole("img", { name: "Thruput address QR code" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("dialog", { name: "View options" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    fireEvent.click(screen.getByRole("button", { name: "View options" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Settings" }));
+    expect(await screen.findByLabelText("Network")).toBeInTheDocument();
+  });
+
+  it("copies the Thruput address and closes the dropdown", async () => {
+    const writeText = jest.fn(async () => {});
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    mount();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "View options" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Copy address" }),
+    );
+    await waitFor(() =>
+      expect(writeText).toHaveBeenCalledWith(account.address),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "View options" }),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it("locks through the existing Freighter sign-out action", async () => {
+    const signOut = jest.spyOn(ApiInternal, "signOut").mockResolvedValue({
+      publicKey: "",
+      applicationState: APPLICATION_STATE.MNEMONIC_PHRASE_CONFIRMED,
+    });
+    mount();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "View options" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Lock Freighter" }),
+    );
+    expect(await screen.findByText("Unlock wallet")).toBeInTheDocument();
+    expect(signOut).toHaveBeenCalled();
+    signOut.mockRestore();
   });
 
   it("requests test tokens from home above Add token and confirms the result", async () => {

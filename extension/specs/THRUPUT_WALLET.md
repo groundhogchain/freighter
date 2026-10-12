@@ -75,8 +75,9 @@ popup.
 
 Thruput is the default home screen. The visible chain selector opens the Stellar
 home when needed. The two homes share the account summary and action-tile
-components. On Thruput, the main balance is a HOG quantity, not a fiat total.
-Swap is disabled. **Request test HOG** is on the home screen above **Add token**.
+components. On Thruput, the main balance is a native-token quantity without a
+ticker suffix, not a fiat total. The asset is labeled **Thruput tokens**.
+Swap is disabled. **Request test tokens** is on the home screen above **Add token**.
 It uses `requestAirdrop` on both devnet and localnet. **Add** opens receive and token tracking;
 **Send** opens the Thruput transfer form; **History** opens activity and recovery.
 The network label opens settings, including network selection and prototype

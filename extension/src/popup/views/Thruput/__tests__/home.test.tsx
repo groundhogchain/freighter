@@ -70,13 +70,17 @@ beforeEach(() => {
 });
 
 describe("Thruput default home", () => {
-  it("shows HOG and disables Swap; Add and Send open Thruput flows", async () => {
+  it("shows the native balance without a ticker and disables Swap; Send opens the Thruput flow", async () => {
     mount();
     await waitFor(() =>
       expect(
         screen.getByTestId("account-view-total-balance"),
-      ).toHaveTextContent("12.5 HOG"),
+      ).toHaveTextContent("12.5"),
     );
+    expect(
+      screen.getByTestId("account-view-total-balance"),
+    ).not.toHaveTextContent("HOG");
+    expect(screen.getByText("Thruput tokens")).toBeInTheDocument();
     expect(screen.queryByText("Stellar home")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Swap" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
@@ -96,7 +100,7 @@ describe("Thruput default home", () => {
       screen.getByRole("heading", { name: "Receive" }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Request test HOG" }),
+      screen.queryByRole("button", { name: "Request test tokens" }),
     ).not.toBeInTheDocument();
     expect(
       screen.getByRole("img", { name: "Thruput address QR code" }),
@@ -112,10 +116,10 @@ describe("Thruput default home", () => {
     );
   });
 
-  it("requests test HOG from home above Add token and confirms the result", async () => {
+  it("requests test tokens from home above Add token and confirms the result", async () => {
     mount();
     const fund = await screen.findByRole("button", {
-      name: "Request test HOG",
+      name: "Request test tokens",
     });
     const addToken = screen.getByRole("button", { name: "Add token" });
     expect(
@@ -164,14 +168,14 @@ describe("Thruput default home", () => {
     expect(request).not.toHaveBeenCalled();
   });
 
-  it("shows an RPC failure without replacing the unknown HOG balance with zero", async () => {
+  it("shows an RPC failure without replacing the unknown native balance with zero", async () => {
     request.mockRejectedValue(new Error("Balances could not be loaded."));
     mount();
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Balances could not be loaded.",
     );
     expect(screen.getByTestId("account-view-total-balance")).toHaveTextContent(
-      "— HOG",
+      "—",
     );
     expect(screen.queryByText("Loading balances…")).not.toBeInTheDocument();
   });

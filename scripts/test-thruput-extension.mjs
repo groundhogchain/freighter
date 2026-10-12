@@ -241,7 +241,7 @@ try {
     .click();
   await wallet.getByRole("button", { name: "Back", exact: true }).click();
   const fundingButton = wallet.getByRole("button", {
-    name: "Request test HOG",
+    name: "Request test tokens",
     exact: true,
   });
   const addTokenButton = wallet.getByRole("button", {
@@ -261,8 +261,14 @@ try {
   await wallet.getByRole("button", { name: "Refresh", exact: true }).click();
   await wallet
     .getByTestId("account-view-total-balance")
-    .filter({ hasText: /[0-9].*HOG/ })
+    .filter({ hasText: /[0-9]/ })
     .waitFor();
+  assert.match(
+    await wallet.locator(".ThruputHome__balance > div").innerText(),
+    /^\d+(?:\.\d+)?$/,
+    "home balance has no token suffix",
+  );
+  await wallet.getByText("Thruput tokens", { exact: true }).waitFor();
   await wallet.getByRole("button", { name: "Add", exact: true }).click();
   await wallet.getByRole("heading", { name: "Receive", exact: true }).waitFor();
   assert.equal(
@@ -275,7 +281,7 @@ try {
   );
   assert.equal(
     await wallet
-      .getByRole("button", { name: "Request test HOG", exact: true })
+      .getByRole("button", { name: "Request test tokens", exact: true })
       .count(),
     0,
   );

@@ -9,7 +9,12 @@ import { ROUTES } from "popup/constants/routes";
 import { IdenticonImg } from "popup/components/identicons/IdenticonImg";
 import { thruputRequest } from "popup/helpers/thruput";
 import type { ThruputAccount } from "thruput/accounts";
-import { HOG_TOKEN, ThruputNetwork, THRUPUT_NETWORKS } from "thruput/networks";
+import {
+  HOG_TOKEN,
+  ThruputNetwork,
+  THRUPUT_NETWORKS,
+  type ThruputToken,
+} from "thruput/networks";
 import { mergeThruputHistory } from "thruput/history";
 import {
   ThruputOutcome,
@@ -36,6 +41,8 @@ export const Dashboard = ({
   refresh: () => Promise<void>;
 }) => {
   const { t } = useTranslation();
+  const tokenLabel = (asset: ThruputToken) =>
+    asset.address === HOG_TOKEN.address ? t("Thruput tokens") : asset.symbol;
   const navigate = useNavigate();
   const [panel, setPanel] = useState(ThruputPanel.TOKENS);
   const [balances, setBalances] = useState<ThruputBalance[]>();
@@ -311,18 +318,18 @@ export const Dashboard = ({
                         <div className="ThruputHome__asset">
                           <div className="ThruputHome__asset-icon">
                             {asset.address === HOG_TOKEN.address ? (
-                              <span aria-hidden="true">H</span>
+                              <span aria-hidden="true">T</span>
                             ) : (
                               <IdenticonImg publicKey={asset.address} />
                             )}
                           </div>
                           <div>
-                            <div>{asset.symbol}</div>
-                            <div className="Thruput__muted">
-                              {asset.address === HOG_TOKEN.address
-                                ? t("Thruput")
-                                : `${asset.address.slice(0, 6)}…${asset.address.slice(-4)}`}
-                            </div>
+                            <div>{tokenLabel(asset)}</div>
+                            {asset.address !== HOG_TOKEN.address ? (
+                              <div className="Thruput__muted">
+                                {`${asset.address.slice(0, 6)}…${asset.address.slice(-4)}`}
+                              </div>
+                            ) : null}
                           </div>
                         </div>
                         <div className="ThruputHome__asset-balance">
@@ -380,7 +387,7 @@ export const Dashboard = ({
                   })
                 }
               >
-                {t("Request test HOG")}
+                {t("Request test tokens")}
               </Button>
               <Button
                 type="button"
@@ -439,7 +446,7 @@ export const Dashboard = ({
                 >
                   {(balances || [HOG_TOKEN]).map((asset) => (
                     <option key={asset.address} value={asset.address}>
-                      {asset.symbol}
+                      {tokenLabel(asset)}
                     </option>
                   ))}
                 </select>
@@ -466,7 +473,7 @@ export const Dashboard = ({
                 />
                 <p className="Thruput__muted">
                   {t(
-                    "No gas fee. Free HOG provides scheduling capacity and funds storage deposits.",
+                    "No gas fee. Available Thruput tokens provide scheduling capacity and fund storage deposits.",
                   )}
                 </p>
                 <Button
@@ -620,7 +627,7 @@ export const Dashboard = ({
                                   BigInt(record.rawAmount),
                                   record.token.decimals,
                                 ),
-                                symbol: record.token.symbol,
+                                symbol: tokenLabel(record.token),
                               })
                             : t("Account transaction at block {{height}}", {
                                 height: record.height,

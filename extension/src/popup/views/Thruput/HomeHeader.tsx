@@ -106,9 +106,7 @@ export const HomeHeader = ({
           }
           balance={
             <div className="ThruputHome__balance">
-              <div>
-                {balance} <span>HOG</span>
-              </div>
+              <div>{balance}</div>
               <button
                 type="button"
                 className="ThruputHome__network"
@@ -138,11 +136,7 @@ export const HomeHeader = ({
               >
                 <AccountAction icon={<Icon.ArrowUp />} label={t("Send")} />
               </button>
-              <button
-                type="button"
-                className="ThruputHome__action"
-                disabled
-              >
+              <button type="button" className="ThruputHome__action" disabled>
                 <AccountAction icon={<Icon.RefreshCw02 />} label={t("Swap")} />
               </button>
             </>

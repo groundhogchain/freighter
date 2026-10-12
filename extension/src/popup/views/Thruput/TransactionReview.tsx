@@ -1,6 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import type { ThruputTransactionReview } from "thruput/transactions";
+import { HOG_TOKEN } from "thruput/networks";
 
 export const TransactionReview = ({
   review,
@@ -33,7 +34,7 @@ export const TransactionReview = ({
           <dd className="Thruput__address">{review.deployment.contractHash}</dd>
           <dt>{t("Deployment nonce")}</dt>
           <dd className="Thruput__address">{review.deployment.nonce}</dd>
-          <dt>{t("Funding in HOG base units")}</dt>
+          <dt>{t("Funding in Thruput token base units")}</dt>
           <dd>{review.deployment.rawFunding}</dd>
         </dl>
       ) : null}
@@ -53,7 +54,10 @@ export const TransactionReview = ({
                   <>
                     <dt>{t("Decoded transfer amount")}</dt>
                     <dd>
-                      {call.transfer.displayAmount} {call.transfer.symbol}
+                      {call.transfer.displayAmount}{" "}
+                      {call.target === HOG_TOKEN.address
+                        ? t("Thruput tokens")
+                        : call.transfer.symbol}
                     </dd>
                   </>
                 ) : null}
